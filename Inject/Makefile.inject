@@ -1,0 +1,17 @@
+OBJS=inject.o beam.o
+
+# Inject libraries
+$(LIBINJ) : $(OBJS)
+	- /bin/rm -f $(LIBINJ)
+	- ar qc $(LIBINJ) $(OBJS)
+	- ranlib $(LIBINJ)
+
+# Clean up the directory
+clean :
+	/bin/rm -f *.o
+
+distclean :
+	/bin/rm -f *.o *.a
+
+.cpp.o :
+	$(CXX) $(CFLAGS) $(INCLUDES) $(MKLINC) $(MKLINCOPTS) -c $<
