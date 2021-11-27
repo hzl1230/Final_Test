@@ -13,19 +13,19 @@ class Particle {
     Particle() :
       pos_ {0, 0, 0},
       vel_ {0, 0, 0}, 
-      nu_(0)
+      nu_(0), losten(0)
       { }
 
     Particle(Real x, Real vx, Real y, Real vy, Real z=0., Real vz=0.) :
       pos_ {x, y, z},
       vel_ {vx, vy, vz},
-      nu_(0)
+      nu_(0), losten(0)
       { }
     
     Particle(Real x, Real y, Real z) :
       pos_ {x, y, z},
       vel_ {0, 0, 0},
-      nu_ (0)
+      nu_ (0), losten(0)
       { }
 
     // copy constructor
