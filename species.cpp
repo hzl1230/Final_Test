@@ -27,6 +27,14 @@ Species::~Species()
   delete particles;
 }
 
+void Species::gen_particles(Bigint n)
+{
+  std::vector<Real> x(n), vx(n);
+  std::vector<Real> y(n), vy(n);
+  std::vector<Real> z(n), vz(n);
+
+}
+
 void Species::reserve_num_particles(Bigint n)
 { 
   particles->reserve(n);

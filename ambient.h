@@ -37,6 +37,7 @@ class Ambient {
     Real zmax() const { return bound_hi[2]; }
 
     void gen_ambient (int [3], Real [3], Real [3], Real [3], class Particles* &);
+    void gen_ambient_0d(Bigint n, class Particles* &);
 
   private:
     int specid;
@@ -50,6 +51,7 @@ class Ambient {
     typedef void (Ambient::*PtrGenAmbient)(
         int [3], Real [3], Real [3], Real [3], class Particles* &);
     PtrGenAmbient ptr_gen_ambient;
+    // void gen_ambient_0d (int [3], Real [3], Real [3], Real [3], class Particles* &);
     void gen_ambient_2d (int [3], Real [3], Real [3], Real [3], class Particles* &);
     void gen_ambient_3d (int [3], Real [3], Real [3], Real [3], class Particles* &);
     void gen_ambient_axi(int [3], Real [3], Real [3], Real [3], class Particles* &);

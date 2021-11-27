@@ -7,6 +7,8 @@
 #include "species.h"
 #include "particles.h"
 
+ESPIC::Random ranf;
+
 using namespace ESPIC;
 
 /* ---------------- Begin Public Methods ---------------- */
@@ -43,6 +45,38 @@ void Ambient::gen_ambient(int nc[3], Real bound_lo[3], Real bound_hi[3], Real dx
 {
   (this->*ptr_gen_ambient)(nc, bound_lo, bound_hi, dx, particles);
 }
+
+void Ambient::gen_ambient_0d(Bigint np, Particles* &particles)
+{
+  // Bigint np = 10000;
+  Particles::size_type nparts, ipart;
+  Real x_dim = (bound_hi[0]-bound_lo[0]), y_dim = (bound_hi[1]-bound_lo[1]);
+  std::vector<Real> x(np), vx(np);
+  std::vector<Real> y(np), vy(np);
+  std::vector<Real> z(np), vz(np);
+  Real vrf, trf;
+
+  nparts = static_cast<Particles::size_type>(np);
+  for (ipart = 0; ipart < nparts; ++ipart){
+    x[ipart] = bound_lo[0] + ranf()*x_dim;
+    y[ipart] = bound_lo[1] + ranf()*y_dim;
+    z[ipart] = 0.;
+  }
+
+  for (ipart = 0; ipart < nparts; ipart++) {
+    vrf = vth*ranf.normal_dist_factor();
+    trf = PI2*ranf();
+    vx[ipart] = vrf*cos(trf) + vel[0];
+    vy[ipart] = vrf*sin(trf) + vel[1];
+
+    vrf = vth * ranf.normal_dist_factor();
+    trf = PI2*ranf();
+    vz[ipart] = vrf*cos(trf) + vel[2];
+  }
+  particles->append(Particles(x, y, z, vx, vy, vz));
+}
+
+
 
 /* ---------------- End Public Methods ---------------- */
 

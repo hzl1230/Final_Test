@@ -1,10 +1,11 @@
-BASEPATH=/mnt/c/Users/dell/Desktop/Plasma/eduPIC-main/RFBC
-CXX=g++
-CFLAGS=-std=c++11 -Wall -g -O2
+BASEPATH=/Users/hzl/plasma/PlasmaDischarged/myPIC/Final_Test
+CXX=clang++
+CFLAGS=-std=c++17 -Wall -g -O2
 PROG=main
 
 OBJS=main.o espic_math.o espic_info.o parse.o str_split.o \
-     mesh.o param_particle.o species.o particles.o ambient.o
+     mesh.o param_particle.o species.o particles.o ambient.o \
+     tile.o reaction.o cross_section.o collision.o
 	
 EIGEN_PATH=${BASEPATH}/ThirdParty
 EIGEN=${EIGEN_PATH}/Eigen3.3.7

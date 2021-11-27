@@ -32,7 +32,7 @@ Real newton_raphson(const std::function< Real(Real) >& f,
 }
 
 // define and initialize global seed for random number generator
-// Bigint Random::seed = 0;
+Bigint Random::seed = 0;
 
 
 }

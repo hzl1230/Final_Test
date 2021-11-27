@@ -81,11 +81,11 @@ inline void cross_prod(const Real vecA[3], const Real vecB[3], Real vecC[3])
 };
 
 extern ESPIC::Random ranf;
-ESPIC::Random ranf;
+
 
 inline void VelBoltzDistr(Real vth, Real& vx, Real& vy, Real& vz)
 {
-    
+    ESPIC::Random ranf;
     Real vrf = vth * ranf.normal_dist_factor();
     Real trf = ESPIC::PI2 * ranf();
     vx = vrf * cos(trf);

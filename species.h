@@ -43,6 +43,8 @@ class Species {
     /* Public methods */
     void reserve_num_particles(Bigint n);
 
+    void gen_particles(Bigint n); // use for test
+
     Particles::size_type num_particles() const { return particles->size(); }
 
     void write_restart(FILE *);
