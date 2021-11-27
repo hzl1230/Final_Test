@@ -46,6 +46,7 @@ void Collisionpair::ParticleExcitatinCollision(Real th)
     eta = ESPIC::PI2 * RG01();
     FindEulerAngle();
     UpdateParticleVelInfo();
+    pt.lost() += th;
 }
 
 void Collisionpair::ParticleIonizationCollision(Real th)
@@ -70,6 +71,8 @@ void Collisionpair::ParticleIonizationCollision(Real th)
     product_arr.emplace_back(std::move(e_ej));
     EjectIonReaction(p_ej);
     product_arr.emplace_back(std::move(p_ej));
+
+    pt.lost() += th;
 }
 
 void Collisionpair::ParticleIsotropicCollision()

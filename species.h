@@ -43,7 +43,7 @@ class Species {
     /* Public methods */
     void reserve_num_particles(Bigint n);
 
-    void gen_particles(Bigint n); // use for test
+    void get_particles_energy();
 
     Particles::size_type num_particles() const { return particles->size(); }
 
@@ -55,6 +55,7 @@ class Species {
     Real charge;
     Real weight;
     class Particles* particles;
+    Real toten;
 };
 
 #endif

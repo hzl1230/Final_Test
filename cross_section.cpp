@@ -58,7 +58,8 @@ void CrossSection::read_input_cross_section()
         if (word.empty())
             continue;
         else if ("total" == word.at(0)) {
-            pairs_number = static_cast<int>(atoi(word[1].c_str()));
+            pairs_number = atoi(word[1].c_str());
+            word.erase(word.begin(), word.begin()+2);
         }
         else if ("pairs" == word.at(0)) { 
             int num_re = atoi(word[1].c_str());
@@ -68,8 +69,10 @@ void CrossSection::read_input_cross_section()
                 espic_error("Insufficient Reactants");
               case 1:
                 reactant_arr.emplace_back(std::make_pair(word[0], "default"));
+                break;
               case 2:
                 reactant_arr.emplace_back(std::make_pair(word[0], word[1]));
+                break;
             }
             word.erase(word.begin(), word.begin() + num_re);
             

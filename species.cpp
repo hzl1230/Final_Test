@@ -9,7 +9,8 @@ Species::Species(const SpeciesDef* const & specdef)
     mass (specdef->mass),
     charge (specdef->charge),
     weight (specdef->weight),
-    particles (new Particles())
+    particles (new Particles()),
+    toten(0)
 {
 }
 
@@ -18,7 +19,8 @@ Species::Species(const Species& spec)
     mass(spec.mass),
     charge(spec.charge),
     weight(spec.weight),
-    particles(new Particles(*(spec.particles)))
+    particles(new Particles(*(spec.particles))),
+    toten(spec.toten)
 {
 }
 
@@ -27,17 +29,20 @@ Species::~Species()
   delete particles;
 }
 
-void Species::gen_particles(Bigint n)
-{
-  std::vector<Real> x(n), vx(n);
-  std::vector<Real> y(n), vy(n);
-  std::vector<Real> z(n), vz(n);
-
-}
-
 void Species::reserve_num_particles(Bigint n)
 { 
   particles->reserve(n);
+}
+
+void Species::get_particles_energy()
+{
+  Particles::size_type nparts, ipart;
+  nparts = particles->size();
+  for (ipart = 0; ipart < nparts; ++ipart) {
+    Particle& particle = (*particles)[ipart];
+    toten += particle.velsqr()*mass;
+    toten += particle.lost();
+  }
 }
 
 void Species::write_restart(FILE* fp)

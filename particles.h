@@ -32,13 +32,14 @@ class Particle {
     Particle(const Particle& other) :
       pos_{other.pos_[0], other.pos_[1], other.pos_[2]},
       vel_{other.vel_[0], other.vel_[1], other.vel_[2]},
-      nu_(other.nu_)
+      nu_(other.nu_), losten(other.losten)
       { }
 // assignment operator
     Particle& operator=(const Particle& rhs) {
       pos_[0] = rhs.pos_[0]; pos_[1] = rhs.pos_[1]; pos_[2] = rhs.pos_[2];
       vel_[0] = rhs.vel_[0]; vel_[1] = rhs.vel_[1]; vel_[2] = rhs.vel_[2];
       nu_ = rhs.nu_;
+      losten = rhs.losten;
       return *this;
     }
 
@@ -65,17 +66,17 @@ class Particle {
     std::vector<Real>& nu() { return nu_; }
     const std::vector<Real>& nu() const { return nu_; }
     void update_nu(const std::vector<Real>& nu) { nu_ = nu; }
+    Real& lost() { return losten; }
 
     Real* pos() { return pos_; }
     Real* vel() { return vel_; }
-
-    
 
   private:
     Real pos_[3];
     Real vel_[3];
     std::vector<Real> nu_;
     Real vel_r[3];
+    Real losten;
     
 };
 

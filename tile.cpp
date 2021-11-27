@@ -1,5 +1,6 @@
 #include "tile.h"
 #include "ambient.h"
+#include <fstream>
 
 /*----------------------- begin public method ------------------------*/
 
@@ -84,7 +85,8 @@ void Tile::ParticleBackgroundCollision(Real dt, int icsp)
     Reaction* & reaction = reaction_arr[icsp].second;
     Particles* & pts = species_arr[spec_id]->particles;
     const Real pm = species_arr[spec_id]->mass;
-    // const std::string& name = species_arr[spec_id]->name;
+    const std::string& name = species_arr[spec_id]->name;
+    std::ofstream of(name+".dat", std::ofstream::app);
     Real nu_max(0);
     
     npart = pts->size();
@@ -107,18 +109,21 @@ void Tile::ParticleBackgroundCollision(Real dt, int icsp)
         nevrt = vel*ndens;
 
         transform(info.begin(),info.end(), back_inserter(nu), 
-                    [=](auto& x) { return x*nevrt; });
+                    [=](Real& x) { return x*nevrt; });
         for(auto& nui : nu) nutot += nui;
         if (nutot > nu_max) nu_max = nutot;
     }
         CollProd products;
         NullCollisionMethod(*pts, dt, nu_max, reaction, pm, products);
-        if(!products.empty()){
-            for(auto iprod = 0; iprod<products.size(); ++iprod) {
-                pts->append(products[iprod][0]);
-                species_arr[spec_id+1]->particles->append(products[iprod][1]);
-            }
+
+    if(!products.empty()){
+        for(auto iprod = 0; iprod<products.size(); ++iprod) {
+            pts->append(products[iprod][0]);
+            species_arr[spec_id+1]->particles->append(products[iprod][1]);
         }
+    }
+    of << species_arr[spec_id]->toten << std::endl;
+    of.close();
 }
 
 void Tile::ParticleColumnCollision(Real dt, int icsp)
@@ -130,6 +135,7 @@ void Tile::NullCollisionMethod(Particles& pts, Real dt, Real nu_max,
                          Reaction*& react, Real imass, CollProd& products)
 {
     Particles::size_type ncoll, ipart, npart;
+    int ela, exc, ion;
     npart = pts.size();
     ncoll = static_cast<Particles::size_type>(npart*Pcoll(nu_max,dt));
     int ntype(react->isize());
@@ -143,7 +149,8 @@ void Tile::NullCollisionMethod(Particles& pts, Real dt, Real nu_max,
             if(rnd < nuj / nu_max) {
                 Collisionpair collision = Collisionpair(ptc, imass, mass, vth);
                 ParticleCollision(itype, mass, react, collision, products);
-                ++itype;  break;}
+                ++itype; break;
+            }
         }
     }
 }
@@ -225,7 +232,7 @@ void Tile::InitCollision(
         
         for (const auto& pro: prod_list) {
             if ("none" == pro) {
-                std::cout << "none";
+                std::cout << "none ";
                 break;
             }
             int spid = -1;
@@ -241,7 +248,7 @@ void Tile::InitCollision(
             reaction->productid_arr.emplace_back(spid);
             std::cout << pro << "(" << spid << ")" << " ";
         }  
-        std::cout << " ]" << std::endl;
+        std::cout << "]" << std::endl;
     }
     
 }

@@ -2,6 +2,7 @@
 #include "param_particle.h"
 #include "mesh.h"
 #include "tile.h"
+#include <fstream>
 
 using std::cout;
 using std::endl;
@@ -16,6 +17,8 @@ int main(int argc, char** argv)
     ParamParticle* param_particle = new ParamParticle("particle.in", mesh);
     CrossSection* cross_section = new CrossSection("csection.in");
     Tile* tile = new Tile(mesh, param_particle, cross_section);
+    std::ofstream of1("e.dat"), of2("Ar+.dat");
+    of1.close(), of2.close();
     cout << "MCC loop Start---------------------------------------------------------\n"; 
     while(Loop) {
         tile->ParticleCollisioninTiles(dt);
