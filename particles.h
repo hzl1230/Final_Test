@@ -46,6 +46,15 @@ class Particle {
       return *this;
     }
 
+    void gen_relative_vel(const Real vth)
+    {
+      Real vxb, vyb, vzb;
+      VelBoltzDistr(vth, vxb, vyb, vzb);
+      vel_r[0] = vel_[0] - vxb;
+      vel_r[1] = vel_[1] - vyb;
+      vel_r[2] = vel_[2] - vzb;
+    }
+
     Real& x()  { return pos_[0]; }
     Real& y()  { return pos_[1]; }
     Real& z()  { return pos_[2]; }

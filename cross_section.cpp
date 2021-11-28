@@ -10,6 +10,12 @@ CrossSection::CrossSection(const std::string &file)
     read_input_cross_section();
     reaction_arr.reserve(num_pairs()); 
     get_reaction();
+
+    std::cout << "Set Background Species: \n";
+    std::cout << "background - (name = " << background->name;
+    std::cout << ", mass = " << background->mass;
+    std::cout << ", n = " << background->ndens;
+    std::cout << ", T = " << background->temp << ")." << std::endl;
 }
 
 CrossSection::~CrossSection()

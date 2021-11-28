@@ -10,6 +10,7 @@ g(sqrt(2.0 * particle.rel_velsqr())),
 F1(m1/(m1+m2)), F2(m2/(m1+m2))
 {
     gyz = sqrt(gy*gy + gz*gz);
+    g1 = g;
 
     Real vxb, vyb, vzb;
     vxb = pt.vx() - gx;
@@ -30,6 +31,7 @@ void Collisionpair::ParticleElasticCollision()
 { 
     std::ofstream of("ela.dat", std::ofstream::app);
     of << "before: " << pt.velsqr()*mass;
+    of << "en: " << pt.rel_velsqr()*mass;
 
     chi = acos(1.0 - 2.0*RG01());
     eta = ESPIC::PI2 * RG01();
@@ -47,6 +49,7 @@ void Collisionpair::ParticleElasticCollision()
     pt.vz() = wz + F2 * vz;
 
     of << " after: " << pt.velsqr()*mass << std::endl;
+    of << " en: " << pt.rel_velsqr()*mass << std::endl;
 }
 
 void Collisionpair::ParticleExcitatinCollision(Real th) 

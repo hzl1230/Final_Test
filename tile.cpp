@@ -109,8 +109,8 @@ void Tile::ParticleBackgroundCollision(Real dt, int icsp)
         if(!info.empty()) info.clear();
         if(!nu.empty()) nu.clear();
 
-        VelBoltzDistr(vth, vxb, vyb, vzb);
-        RelativeVelocity(pt, vxb, vyb, vzb);
+        // VelBoltzDistr(vth, vxb, vyb, vzb);
+        pt.gen_relative_vel(vth);
     
         energy = pt.rel_velsqr() * m;
         info = reaction->en_cs(energy);
@@ -134,8 +134,8 @@ void Tile::ParticleBackgroundCollision(Real dt, int icsp)
             species_arr[spec_id+1]->particles->append(products[iprod][1]);
         }
     }
-    // species_arr[spec_id]->get_particles_energy();
-    // of << species_arr[spec_id]->toten << std::endl;
+    species_arr[spec_id]->get_particles_energy();
+    of << species_arr[spec_id]->toten << std::endl;
     of.close();
 }
 

@@ -21,9 +21,17 @@ public:
     const std::vector<Real>& en_cs(Real en)
     {
         // Get cs_info through 1DLinearInterpoltationMethod
+        if(en <= de_) { 
+            info ={0.,0.,0.};
+            return info;
+        } 
+
         Real deinv(1./de_);
-        Real ei(en*deinv - 1) ;
+        Real ei = en*deinv - 1;
+        
+        // int elo = static_cast<int>(ei);
         int elo = static_cast<int>(ei);
+        
         if (elo > arr_length) {
             std::cout << en << " " << elo << std::endl;
             std::string var_name("info_arr_size");
