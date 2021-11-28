@@ -7,5 +7,5 @@ pairs 1 Ar+ &
  reaction 2 iso back &
  product 0 &
  dir i_Ar.dat
-background Ar 72820.7 0.0 1e06 0.01         !background: name, mass, charge, n, T 
+background Ar 72820.7 0.0 2414323.51 0.01         !background: name, mass, charge, n, T 
 aid_param  2.585              ! kTe0 need to calculate ionization energy distribution
