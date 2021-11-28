@@ -38,6 +38,7 @@ void Species::get_particles_energy()
 {
   Particles::size_type nparts, ipart;
   nparts = particles->size();
+  toten = 0;
   for (ipart = 0; ipart < nparts; ++ipart) {
     Particle& particle = (*particles)[ipart];
     toten += particle.velsqr()*mass;

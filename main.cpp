@@ -17,8 +17,12 @@ int main(int argc, char** argv)
     ParamParticle* param_particle = new ParamParticle("particle.in", mesh);
     CrossSection* cross_section = new CrossSection("csection.in");
     Tile* tile = new Tile(mesh, param_particle, cross_section);
+
     std::ofstream of1("e.dat"), of2("Ar+.dat");
-    of1.close(), of2.close();
+    std::ofstream of3("ion.dat"), of4("exc.dat"), of5("ela.dat");
+    of1.close(); of2.close(); of3.close();
+    of4.close(); of5.close();
+
     cout << "MCC loop Start---------------------------------------------------------\n"; 
     while(Loop) {
         tile->ParticleCollisioninTiles(dt);

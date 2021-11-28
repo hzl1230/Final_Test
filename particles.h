@@ -25,6 +25,7 @@ class Particle {
     Particle(Real x, Real y, Real z) :
       pos_ {x, y, z},
       vel_ {0, 0, 0},
+      vel_r {0, 0, 0},
       nu_ (0), losten(0)
       { }
 
@@ -32,12 +33,14 @@ class Particle {
     Particle(const Particle& other) :
       pos_{other.pos_[0], other.pos_[1], other.pos_[2]},
       vel_{other.vel_[0], other.vel_[1], other.vel_[2]},
+      vel_r{other.vel_r[0], other.vel_r[1], other.vel_r[2]},
       nu_(other.nu_), losten(other.losten)
       { }
 // assignment operator
     Particle& operator=(const Particle& rhs) {
       pos_[0] = rhs.pos_[0]; pos_[1] = rhs.pos_[1]; pos_[2] = rhs.pos_[2];
       vel_[0] = rhs.vel_[0]; vel_[1] = rhs.vel_[1]; vel_[2] = rhs.vel_[2];
+      vel_r[0] = rhs.vel_r[0]; vel_r[1] = rhs.vel_r[1]; vel_r[2] = rhs.vel_r[2];
       nu_ = rhs.nu_;
       losten = rhs.losten;
       return *this;
@@ -74,8 +77,8 @@ class Particle {
   private:
     Real pos_[3];
     Real vel_[3];
-    std::vector<Real> nu_;
     Real vel_r[3];
+    std::vector<Real> nu_;
     Real losten;
     
 };

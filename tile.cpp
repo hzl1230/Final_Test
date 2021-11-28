@@ -2,6 +2,10 @@
 #include "ambient.h"
 #include <fstream>
 
+int ela, exc, ion;
+using std::cout;
+using std::endl;
+
 /*----------------------- begin public method ------------------------*/
 
 /* Constructor */
@@ -62,8 +66,10 @@ void Tile::ParticleCollisioninTiles(Real dt)
     size_t num_collspec = reaction_arr.size();
     for (size_t icsp = 0; icsp < num_collspec; ++icsp) {
         std::vector<int>& specid_arr = reaction_arr[icsp].first;
-        if (specid_arr.size() < 2) 
+        if (specid_arr.size() < 2) {
+            ela = 0; exc = 0; ion = 0;
             ptr_particle_collision = &Tile::ParticleBackgroundCollision;
+        }
         else {
             ptr_particle_collision = &Tile::ParticleColumnCollision;
             reaction_arr[icsp].second->is_background_collision = false;
@@ -80,11 +86,13 @@ void Tile::ParticleBackgroundCollision(Real dt, int icsp)
 #pragma omp parallel for private(ipart, npart) \
   schedule(dynamic)
 #endif
-
+    
     const int spec_id = (reaction_arr[icsp].first)[0];
     Reaction* & reaction = reaction_arr[icsp].second;
     Particles* & pts = species_arr[spec_id]->particles;
     const Real pm = species_arr[spec_id]->mass;
+    const Real m = (pm * mass)/(pm + mass);
+
     const std::string& name = species_arr[spec_id]->name;
     std::ofstream of(name+".dat", std::ofstream::app);
     Real nu_max(0);
@@ -94,6 +102,7 @@ void Tile::ParticleBackgroundCollision(Real dt, int icsp)
         Real vxb, vyb, vzb;
         Real vel, energy;
         Real nevrt, nutot(0);
+        
         Particle& pt = (*pts)[ipart];
         std::vector<Real> info;
         std::vector<Real>& nu = pt.nu();
@@ -103,18 +112,21 @@ void Tile::ParticleBackgroundCollision(Real dt, int icsp)
         VelBoltzDistr(vth, vxb, vyb, vzb);
         RelativeVelocity(pt, vxb, vyb, vzb);
     
-        energy = get_energy(pt.vxr(), pt.vyr(), pt.vzr());
+        energy = pt.rel_velsqr() * m;
         info = reaction->en_cs(energy);
-        vel = sqrt(2.0 * energy);
+        vel = sqrt(2.* pt.rel_velsqr());
         nevrt = vel*ndens;
 
         transform(info.begin(),info.end(), back_inserter(nu), 
                     [=](Real& x) { return x*nevrt; });
-        for(auto& nui : nu) nutot += nui;
+       
+        for (auto& nui : nu) nutot += nui;
         if (nutot > nu_max) nu_max = nutot;
     }
         CollProd products;
         NullCollisionMethod(*pts, dt, nu_max, reaction, pm, products);
+        std::cout << "CollisionType: " << ela << " " 
+             << exc << " " << ion << std::endl;
 
     if(!products.empty()){
         for(auto iprod = 0; iprod<products.size(); ++iprod) {
@@ -122,7 +134,8 @@ void Tile::ParticleBackgroundCollision(Real dt, int icsp)
             species_arr[spec_id+1]->particles->append(products[iprod][1]);
         }
     }
-    of << species_arr[spec_id]->toten << std::endl;
+    // species_arr[spec_id]->get_particles_energy();
+    // of << species_arr[spec_id]->toten << std::endl;
     of.close();
 }
 
@@ -135,22 +148,28 @@ void Tile::NullCollisionMethod(Particles& pts, Real dt, Real nu_max,
                          Reaction*& react, Real imass, CollProd& products)
 {
     Particles::size_type ncoll, ipart, npart;
-    int ela, exc, ion;
+    pts.particles_shuffle();
+    
     npart = pts.size();
     ncoll = static_cast<Particles::size_type>(npart*Pcoll(nu_max,dt));
+    std::cout << nu_max << " " << ncoll << " ";
     int ntype(react->isize());
     for(ipart = 0; ipart < ncoll; ++ipart) {
         Particle& ptc = pts[ipart];
         const std::vector<Real>& nu = ptc.nu();
         Real rnd(ranf()), nuj(0.);
-        int itype(0);
+        int itype = 0;
         while(itype != ntype) {
             nuj += nu[itype];
             if(rnd < nuj / nu_max) {
                 Collisionpair collision = Collisionpair(ptc, imass, mass, vth);
                 ParticleCollision(itype, mass, react, collision, products);
-                ++itype; break;
+                if(itype==0) ++ela;
+                else if(itype==1) ++exc;
+                else ++ion;
+                break;
             }
+            ++itype;
         }
     }
 }

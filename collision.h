@@ -41,7 +41,8 @@ private:
     Particle& pt;
     const Real mass;
     const Real vth;
-    Real gx, gy, gz, gyz, g;    // relative-velocity
+    Real gx, gy, gz, gyz, g1;    // relative-velocity
+    const Real g;
     const Real F1, F2;
     
     Real chi, eta;
