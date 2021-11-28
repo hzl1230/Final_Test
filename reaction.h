@@ -25,6 +25,7 @@ public:
         Real ei(en*deinv - 1) ;
         int elo = static_cast<int>(ei);
         if (elo > arr_length) {
+            std::cout << en << " " << elo << std::endl;
             std::string var_name("info_arr_size");
             espic_error(out_bound_info(var_name, infile));
         }
