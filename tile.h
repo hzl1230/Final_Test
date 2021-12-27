@@ -32,6 +32,9 @@ public:
                            Collisionpair& ,
                            CollProd&);
 
+    typedef std::array<Real, 3> VrArr;
+    typedef std::vector<std::vector<Real>> VecRealArr;
+
 private:
 
     void InitAmbient(int, 

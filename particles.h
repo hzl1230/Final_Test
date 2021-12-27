@@ -2,7 +2,11 @@
 #define _PARTICLES_H
 
 #include <vector>
+#include <array>
 #include <random>
+#include <chrono>
+#include <algorithm>
+#include <iostream>
 #include "espic_type.h"
 #include "espic_math.h"
 
@@ -12,48 +16,49 @@ class Particle {
     // default constructor
     Particle() :
       pos_ {0, 0, 0},
-      vel_ {0, 0, 0}, 
-      nu_(0), losten(0)
+      vel_ {0, 0, 0}
       { }
 
     Particle(Real x, Real vx, Real y, Real vy, Real z=0., Real vz=0.) :
       pos_ {x, y, z},
-      vel_ {vx, vy, vz},
-      nu_(0), losten(0)
+      vel_ {vx, vy, vz}
       { }
     
     Particle(Real x, Real y, Real z) :
       pos_ {x, y, z},
-      vel_ {0, 0, 0},
-      vel_r {0, 0, 0},
-      nu_ (0), losten(0)
+      vel_ {0, 0, 0}
       { }
 
     // copy constructor
     Particle(const Particle& other) :
       pos_{other.pos_[0], other.pos_[1], other.pos_[2]},
-      vel_{other.vel_[0], other.vel_[1], other.vel_[2]},
-      vel_r{other.vel_r[0], other.vel_r[1], other.vel_r[2]},
-      nu_(other.nu_), losten(other.losten)
+      vel_{other.vel_[0], other.vel_[1], other.vel_[2]}
       { }
+
 // assignment operator
     Particle& operator=(const Particle& rhs) {
       pos_[0] = rhs.pos_[0]; pos_[1] = rhs.pos_[1]; pos_[2] = rhs.pos_[2];
       vel_[0] = rhs.vel_[0]; vel_[1] = rhs.vel_[1]; vel_[2] = rhs.vel_[2];
-      vel_r[0] = rhs.vel_r[0]; vel_r[1] = rhs.vel_r[1]; vel_r[2] = rhs.vel_r[2];
-      nu_ = rhs.nu_;
-      losten = rhs.losten;
       return *this;
     }
 
-    void gen_relative_vel(const Real vth)
-    {
-      Real vxb, vyb, vzb;
-      VelBoltzDistr(vth, vxb, vyb, vzb);
-      vel_r[0] = vel_[0] - vxb;
-      vel_r[1] = vel_[1] - vyb;
-      vel_r[2] = vel_[2] - vzb;
-    }
+    Particle(Particle&& other) :
+      pos_{other.pos_[0], other.pos_[1], other.pos_[2]},
+      vel_{other.vel_[0], other.vel_[1], other.vel_[2]}
+      { 
+        other.pos_[0] = 0; other.pos_[1] = 0; other.pos_[2] = 0;
+        other.vel_[0] = 0; other.vel_[1] = 0; other.vel_[2] = 0;
+      }
+ 
+
+    // void gen_relative_vel(const Real vth, std::array<int, 3>)
+    // {
+    //   Real vxb_, vyb_, vzb_;
+    //   VelBoltzDistr(vth, vxb_, vyb_, vzb_);
+    //   vel_r[0] = vel_[0] - vxb_;
+    //   vel_r[1] = vel_[1] - vyb_;
+    //   vel_r[2] = vel_[2] - vzb_;
+    // }
 
     Real& x()  { return pos_[0]; }
     Real& y()  { return pos_[1]; }
@@ -61,35 +66,33 @@ class Particle {
     Real& vx() { return vel_[0]; }
     Real& vy() { return vel_[1]; }
     Real& vz() { return vel_[2]; }
-    Real& vxr() { return vel_r[0]; }
-    Real& vyr() { return vel_r[1]; }
-    Real& vzr() { return vel_r[2]; }
+    // Real& vxr() { return vel_r[0]; }
+    // Real& vyr() { return vel_r[1]; }
+    // Real& vzr() { return vel_r[2]; }
+    // Real& vr() { return vr_; }
+    // Real& er() { return er_; }
     const Real& x()  const { return pos_[0]; }
     const Real& y()  const { return pos_[1]; }
     const Real& z()  const { return pos_[2]; }
     const Real& vx() const { return vel_[0]; }
     const Real& vy() const { return vel_[1]; }
     const Real& vz() const { return vel_[2]; }
+    // const Real& vr() const { return vr_; }
+    // const Real& er() const { return er_; }
 
     const Real velsqr() { return 0.5*(vel_[0]*vel_[0] 
                       + vel_[1]*vel_[1] + vel_[2]*vel_[2]); }
-    const Real rel_velsqr() { return 0.5*(vel_r[0]*vel_r[0] 
-                      + vel_r[1]*vel_r[1] + vel_r[2]*vel_r[2]); }
-    std::vector<Real>& nu() { return nu_; }
-    const std::vector<Real>& nu() const { return nu_; }
-    void update_nu(const std::vector<Real>& nu) { nu_ = nu; }
-    Real& lost() { return losten; }
+    // const Real rel_velsqr() { return 0.5*(vel_r[0]*vel_r[0] 
+    //                   + vel_r[1]*vel_r[1] + vel_r[2]*vel_r[2]); }
+    // Real* nu() { return nu_; }
+    // const Real& nu(int i) const { return nu_[i]; }
 
     Real* pos() { return pos_; }
     Real* vel() { return vel_; }
-
+  
   private:
     Real pos_[3];
     Real vel_[3];
-    Real vel_r[3];
-    std::vector<Real> nu_;
-    Real losten;
-    
 };
 
 // help function
@@ -270,17 +273,17 @@ class Particles {
     }
 };
 
-inline void RelativeVelocity(Particle& pt, Real vxb, Real vyb, Real vzb)
-{
-    pt.vxr() = pt.vx() - vxb;
-    pt.vyr() = pt.vy() - vyb;
-    pt.vzr() = pt.vy() - vzb;
-    // energy = 0.5*(pt.vxr()*pt.vxr() + pt.vyr()*pt.vyr() + pt.vzr()*pt.vzr());
-}
+// inline void RelativeVelocity(Particle& pt, Real vxb_, Real vyb_, Real vzb_)
+// {
+//     pt.vxr() = pt.vx() - vxb_;
+//     pt.vyr() = pt.vy() - vyb_;
+//     pt.vzr() = pt.vy() - vzb_;
+//     // energy = 0.5*(pt.vxr()*pt.vxr() + pt.vyr()*pt.vyr() + pt.vzr()*pt.vzr());
+// }
 
-inline Real get_energy(Real vx, Real vy, Real vz) 
+inline Real velocity(Real vx, Real vy, Real vz) 
 {
-    return 0.5*(vx*vx + vy*vy + vz*vz);
+    return sqrt(vx*vx + vy*vy + vz*vz);
 }
 
 inline Real Pcoll(Real nu, Real dt) 
@@ -296,6 +299,16 @@ inline Real RG01()
     return RDr(g);
 }
 
+inline const void random_index(size_t np, size_t nc, std::vector<int>& index_list)
+{
+    int i = 0;
+    std::vector<Particles::size_type> index(np);   
+    std::generate(index.begin(), index.end(), [&]{ return i++; });
+
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    std::shuffle(index.begin(), index.end(), std::default_random_engine(seed));
+    index_list.insert(index_list.end(), index.begin(), index.begin()+nc);
+}
 
 
 #endif

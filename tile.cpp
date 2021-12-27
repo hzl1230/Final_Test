@@ -80,12 +80,7 @@ void Tile::ParticleCollisioninTiles(Real dt)
 
 void Tile::ParticleBackgroundCollision(Real dt, int icsp)
 {
-    Particles::size_type ipart, npart;
-
-#ifdef OMP
-#pragma omp parallel for private(ipart, npart) \
-  schedule(dynamic)
-#endif
+    Particles::size_type ipart, npart, ncoll;
     
     const int spec_id = (reaction_arr[icsp].first)[0];
     Reaction* & reaction = reaction_arr[icsp].second;
@@ -95,47 +90,80 @@ void Tile::ParticleBackgroundCollision(Real dt, int icsp)
 
     const std::string& name = species_arr[spec_id]->name;
     std::ofstream of(name+".dat", std::ofstream::app);
+    std::ofstream coll("coll.dat", std::ofstream::app);
     Real nu_max(0);
-    
     npart = pts->size();
-    for (ipart=0; ipart < npart; ++ipart) {
-        Real vxb, vyb, vzb;
-        Real vel, energy;
-        Real nevrt, nutot(0);
-        
-        Particle& pt = (*pts)[ipart];
-        std::vector<Real> info;
-        std::vector<Real>& nu = pt.nu();
-        if(!info.empty()) info.clear();
-        if(!nu.empty()) nu.clear();
 
-        // VelBoltzDistr(vth, vxb, vyb, vzb);
-        pt.gen_relative_vel(vth);
+    VecRealArr nu_arr(npart);
+    std::vector<VrArr> vr_arr(npart);
+    std::vector<Real> vel_r(npart);
+    std::vector<int> index_list;
     
-        energy = pt.rel_velsqr() * m;
-        info = reaction->en_cs(energy);
-        vel = sqrt(2.* pt.rel_velsqr());
-        nevrt = vel*ndens;
+    for (ipart=0; ipart < npart; ++ipart) {
+        Real nevrt, nutot(0);
+        Real vxb, vyb, vzb;
+        Real energy;
+        Particle& pt = (*pts)[ipart];
 
-        transform(info.begin(),info.end(), back_inserter(nu), 
-                    [=](Real& x) { return x*nevrt; });
-       
-        for (auto& nui : nu) nutot += nui;
+        VelBoltzDistr(vth, vxb, vyb, vzb);
+        vr_arr[ipart] = {pt.vx()-vxb, pt.vy()-vyb, pt.vz()-vzb};
+        vel_r[ipart] = velocity(vr_arr[ipart][0], vr_arr[ipart][1], vr_arr[ipart][2]);
+        energy = 0.5 * vel_r[ipart]*vel_r[ipart] * m;
+        nu_arr[ipart] = reaction->en_cs(energy);
+
+        nevrt = vel_r[ipart] * ndens;
+        for (auto& nui : nu_arr[ipart]) {
+            nui *= nevrt;
+            nutot += nui;
+        }
         if (nutot > nu_max) nu_max = nutot;
     }
-        CollProd products;
-        NullCollisionMethod(*pts, dt, nu_max, reaction, pm, products);
-        std::cout << "CollisionType: " << ela << " " 
-             << exc << " " << ion << std::endl;
+    ncoll = static_cast<Particles::size_type>(npart*Pcoll(nu_max,dt)+0.5);
+    random_index(npart, ncoll, index_list);
+    sort(index_list.begin(), index_list.end());
 
-    if(!products.empty()){
-        for(auto iprod = 0; iprod<products.size(); ++iprod) {
-            pts->append(products[iprod][0]);
-            species_arr[spec_id+1]->particles->append(products[iprod][1]);
+    CollProd products;
+    int ntype = reaction->isize();
+    for(const int& ipart: index_list) {
+        Particle& ptc = (*pts)[ipart];
+        const std::vector<Real>& nu = nu_arr[ipart];
+        
+        Real rnd = ranf(), nuj = 0.;
+        int itype = 0;
+        while(itype != ntype) {
+            nuj += nu[itype];
+            if(rnd < (nuj/nu_max)) {
+                Collisionpair collision = Collisionpair(ptc, vr_arr[ipart], vel_r[ipart], pm, mass, vth);
+                ParticleCollision(itype, mass, reaction, collision, products);
+                // break;
+                if (itype == 0) ++ela;
+                else if (itype == 1) ++exc;
+                else ++ion;
+                break;
+            }
+            ++itype;
         }
     }
+
+    if(!products.empty()){
+
+        std::vector<int>& prodid =  reaction->productid_arr;
+        int nprods = static_cast<int>(products.size());
+        int nid = static_cast<int>(prodid.size());
+        for(int iprod = 0; iprod < nprods; ++iprod) {
+            for(int i = 0; i < nid; ++i){
+                int ispec = prodid[i];
+                species_arr[ispec]->particles->append(products[iprod][i]);
+            }
+        }
+    }
+    coll << " nparts: " << npart  << " nu_max: " << nu_max 
+         << " ncolls: " << ncoll << " -> "
+         << ela << " " << exc << " " << ion << std::endl;
+
     species_arr[spec_id]->get_particles_energy();
     of << species_arr[spec_id]->toten << std::endl;
+    coll.close();
     of.close();
 }
 
@@ -144,35 +172,44 @@ void Tile::ParticleColumnCollision(Real dt, int icsp)
     espic_error("Column collision has not prepared");
 }
 
-void Tile::NullCollisionMethod(Particles& pts, Real dt, Real nu_max, 
-                         Reaction*& react, Real imass, CollProd& products)
-{
-    Particles::size_type ncoll, ipart, npart;
-    pts.particles_shuffle();
+// void Tile::NullCollisionMethod(Particles& pts, Real dt, Real nu_max, 
+//                          Reaction*& react, Real imass, CollProd& products)
+// {
+//     Particles::size_type ncoll, ipart, npart;
+//     pts.particles_shuffle();
+//     std::ofstream of("part.out", std::ofstream::app);
     
-    npart = pts.size();
-    ncoll = static_cast<Particles::size_type>(npart*Pcoll(nu_max,dt));
-    std::cout << nu_max << " " << ncoll << " ";
-    int ntype(react->isize());
-    for(ipart = 0; ipart < ncoll; ++ipart) {
-        Particle& ptc = pts[ipart];
-        const std::vector<Real>& nu = ptc.nu();
-        Real rnd(ranf()), nuj(0.);
-        int itype = 0;
-        while(itype != ntype) {
-            nuj += nu[itype];
-            if(rnd < nuj / nu_max) {
-                Collisionpair collision = Collisionpair(ptc, imass, mass, vth);
-                ParticleCollision(itype, mass, react, collision, products);
-                if(itype==0) ++ela;
-                else if(itype==1) ++exc;
-                else ++ion;
-                break;
-            }
-            ++itype;
-        }
-    }
-}
+//     npart = pts.size();
+//     ncoll = static_cast<Particles::size_type>(npart*Pcoll(nu_max,dt));
+//     std::cout << nu_max << " " << ncoll << " ";
+//     int ntype(react->isize());
+//     for(ipart = 0; ipart < ncoll; ++ipart) {
+//         Particle& ptc = pts[ipart];
+//         const std::vector<Real>& nu = ptc.nu();
+
+//         // of << "v = (" << ptc.vx() << " "<< ptc.vy() << " " << ptc.vz() << " ), " 
+//         //    << "vr = (" << ptc.vxr() << " "<< ptc.vyr() << " " << ptc.vzr() << " ), "
+//         //    << "nu = (";
+//         // for (const Real& iu : nu)
+//         //     of << iu << " ";
+//         // of <<")." << std::endl;
+        
+//         Real rnd(ranf()), nuj(0.);
+//         int itype = 0;
+//         while(itype != ntype) {
+//             nuj += nu[itype];
+//             if(rnd < nuj / nu_max) {
+//                 Collisionpair collision = Collisionpair(ptc, imass, mass, vth);
+//                 ParticleCollision(itype, mass, react, collision, products);
+//                 if(itype==0) ++ela;
+//                 else if(itype==1) ++exc;
+//                 else ++ion;
+//                 break;
+//             }
+//             ++itype;
+//         }
+//     }
+// }
 
 void Tile::ParticleCollision(
     const int type_id, 

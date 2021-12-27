@@ -7,12 +7,15 @@
 #include "espic_math.h"
 
 typedef std::vector<std::vector<Particle>> CollProd;
+typedef std::vector<std::vector<Real>> VecRealArr;
+typedef std::array<Real, 3> VrArr;
 extern Real kTe0;
 using namespace ESPIC;
 
 class Collisionpair {
+friend class Particle;
 public:    // In class all velocity except for the Update part are relative velocity 
-    Collisionpair(Particle& particle, Real m1, Real m2, Real vtb);
+    Collisionpair(Particle& particle, VrArr& vr, Real vel, Real m1, Real m2, Real vtb);
 
     ~Collisionpair();
 
@@ -39,17 +42,18 @@ private:
 
 
     Particle& pt;
-    const Real mass;
+    const Real mr;
     const Real vth;
     Real gx, gy, gz, gyz, g1;    // relative-velocity
     const Real g;
+    Real energy;
     const Real F1, F2;
     
     Real chi, eta;
     Real wx, wy, wz;
     Real st, ct, cp, sp, stcp, stsp;
     std::vector<Particle> product_arr;
-    Real energy;
+    
     // std::vector<Real> velbuffer;
 
 };

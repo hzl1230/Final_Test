@@ -11,7 +11,7 @@ int main(int argc, char** argv)
 {
     Real dt = 0.1;
     Real curr_time = 0.;
-    Real ntime = 100.;
+    Real ntime = 100;
     bool Loop = true;
     Mesh* mesh = new Mesh("mesh.in");
     ParamParticle* param_particle = new ParamParticle("particle.in", mesh);

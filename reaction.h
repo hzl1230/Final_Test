@@ -18,7 +18,7 @@ public:
              const ReactPair& spair, int id);
     ~Reaction ();
 
-    const std::vector<Real>& en_cs(Real en)
+    std::vector<Real> en_cs(Real en)
     {
         // Get cs_info through 1DLinearInterpoltationMethod
         if(en <= de_) { 

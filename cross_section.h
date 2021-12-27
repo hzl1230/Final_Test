@@ -17,7 +17,7 @@ public:
         charge(q), ndens(n), temp(T), vth(sqrt(2.*T/m))
         {}
 
-        const std::string& name;
+        const std::string name;
         const Real mass;
         const Real charge;
         const Real ndens;

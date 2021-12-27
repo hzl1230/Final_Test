@@ -42,7 +42,7 @@ void Species::get_particles_energy()
   for (ipart = 0; ipart < nparts; ++ipart) {
     Particle& particle = (*particles)[ipart];
     toten += particle.velsqr()*mass;
-    toten += particle.lost();
+    // toten += particle.lost();
   }
 }
 

@@ -2,11 +2,11 @@
 #include <fstream>
 
 // In class all velocity except for the Update part are relative velocity 
-Collisionpair::Collisionpair(Particle& particle, Real m1, Real m2, Real vtb)
+Collisionpair::Collisionpair(Particle& particle, VrArr& vr, Real vel, Real m1, Real m2, Real vtb)
 : pt(particle), 
-mass(m1*m2/(m1+m2)), vth(vtb),
-gx(pt.vxr()), gy(pt.vyr()), gz(pt.vzr()),
-g(sqrt(2.0 * particle.rel_velsqr())),
+mr(m1*m2/(m1+m2)), vth(vtb),
+gx(vr[0]), gy(vr[1]), gz(vr[2]),
+g(vel), energy(0.5*vel*vel*mr),
 F1(m1/(m1+m2)), F2(m2/(m1+m2))
 {
     gyz = sqrt(gy*gy + gz*gz);
@@ -20,8 +20,6 @@ F1(m1/(m1+m2)), F2(m2/(m1+m2))
     wx = F1 * pt.vx() + F2 * vxb;
     wy = F1 * pt.vy() + F2 * vyb;
     wz = F1 * pt.vz() + F2 * vzb;
-
-    energy = pt.rel_velsqr() * mass;
 }
 
 Collisionpair::~Collisionpair()
@@ -29,10 +27,6 @@ Collisionpair::~Collisionpair()
 
 void Collisionpair::ParticleElasticCollision() 
 { 
-    std::ofstream of("ela.dat", std::ofstream::app);
-    of << "before: " << pt.velsqr()*mass;
-    of << "en: " << pt.rel_velsqr()*mass;
-
     chi = acos(1.0 - 2.0*RG01());
     eta = ESPIC::PI2 * RG01();
     Real sc(sin(chi)), cc(cos(chi));
@@ -48,26 +42,23 @@ void Collisionpair::ParticleElasticCollision()
     pt.vy() = wy + F2 * vy;
     pt.vz() = wz + F2 * vz;
 
-    of << " after: " << pt.velsqr()*mass << std::endl;
-    of << " en: " << pt.rel_velsqr()*mass << std::endl;
 }
 
 void Collisionpair::ParticleExcitatinCollision(Real th) 
 {
-    std::ofstream of("exc.dat", std::ofstream::app);
-    of << "th: " << th;
-    of << " before: " << pt.velsqr()*mass;
+    // std::ofstream of("exc.dat", std::ofstream::app);
+    // of << "th: " << th;
+    // of << " before: " << pt.velsqr()*mr;
     FindEulerAngle();
     energy = fabs(energy - th);
-    g1 = sqrt(2.0 * energy / mass);
+    g1 = sqrt(2.0 * energy / mr);
     chi = acos(1.0 - 2.0 * RG01());
     eta = ESPIC::PI2 * RG01();
     UpdateParticleVelInfo();
-    pt.lost() += th;
 
-    of << " after: " << pt.velsqr()*mass << std::endl;
-    of << std::endl;
-    of.close();
+    // of << " after: " << pt.velsqr()*mr << std::endl;
+    // of << std::endl;
+    // of.close();
 }
 
 void Collisionpair::ParticleIonizationCollision(Real th)
@@ -76,20 +67,17 @@ void Collisionpair::ParticleIonizationCollision(Real th)
     Real g_ej, chi_ej, eta_ej;
     Real w = 10.3 / kTe0;
 
-    std::ofstream of("ion.dat", std::ofstream::app);
+    // std::ofstream of("ion.dat", std::ofstream::app);
 
     energy = fabs(energy - th);
     en_ej = w * tan(RG01() * atan(0.5*energy/w));
     en_sc = fabs(energy - en_ej);
-    g1 = sqrt(2.0 * en_sc/mass);
-    g_ej = sqrt(2.0 * en_ej/mass);
+    g1 = sqrt(2.0 * en_sc/mr);
+    g_ej = sqrt(2.0 * en_ej/mr);
     chi = acos(sqrt(en_sc / energy));
     chi_ej = acos(sqrt(en_ej / energy));
     eta = ESPIC::PI2 * RG01();
     eta_ej = eta + ESPIC::PI;
-
-    of << "th: " << th ;
-    of << " before: " << pt.velsqr()*mass;
 
     Particle e_ej = Particle(pt.x(), pt.y(), pt.z());
     Particle p_ej = Particle(pt.x(), pt.y(), pt.z());
@@ -97,24 +85,21 @@ void Collisionpair::ParticleIonizationCollision(Real th)
     FindEulerAngle();
     UpdateParticleVelInfo();
 
-    of << " after: " << pt.velsqr()*mass << std::endl;
+    // of << " after: " << pt.velsqr()*mr << std::endl;
 
     EjectElectronReaction(chi_ej, eta_ej, g_ej, e_ej);
-    product_arr.emplace_back(std::move(e_ej));
+    product_arr.push_back(std::move(e_ej));
     EjectIonReaction(p_ej);
-    product_arr.emplace_back(std::move(p_ej));
+    product_arr.push_back(std::move(p_ej));
 
-    of << "Eng sc: " << en_sc << " "
-       << "Eng ej: " << en_ej << std::endl;
-    of << "F1: " << F1 << " "
-       << "F2: " << F2 << std::endl;
-    of << "sc: " << pt.velsqr()*mass << " "
-       << "ej: " << e_ej.velsqr()*mass;
-       
-       
-    pt.lost() += th;
-    of << std::endl;
-    of.close();
+    // of << "Eng sc: " << en_sc << " "
+    //    << "Eng ej: " << en_ej << std::endl;
+    // of << "F1: " << F1 << " "
+    //    << "F2: " << F2 << std::endl;
+    // of << "sc: " << pt.velsqr()*mr << " "
+    //    << "ej: " << e_ej.velsqr()*mr;  
+    // of << std::endl;
+    // of.close();
 }
 
 void Collisionpair::ParticleIsotropicCollision()
