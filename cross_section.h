@@ -27,22 +27,24 @@ public:
 
     std::vector<class Reaction*> reaction_arr;
     std::vector<ReactPair> reactant_arr;
-    std::vector<StringList> product_arr;
+    
     Background* background;
     // Real kTe0;
 
     // const std::vector<std::string>& name_species() { return name; }
     const std::vector<std::string>& files() { return reaction_file; }
-    const std::vector<int>& num_react() const { return reaction_type_number; }
+    // const std::vector<int>& num_react() const { return reaction_type_number; }
     int num_pairs() const { return pairs_number; }
+    const std::string& get_bkname() const { return bspname; }
 
 private:
     const std::string infile;
+    std::string bspname;
     int pairs_number;
     std::vector<std::string> reaction_file;
     // std::vector<int> num_reactant;
-    std::vector<int> reaction_type_number;
-    StringList reaction_types;
+    // std::vector<int> reaction_type_number;
+    // StringList reaction_types;
     
     CrossSection();
 

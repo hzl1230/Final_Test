@@ -145,18 +145,18 @@ void Tile::ParticleBackgroundCollision(Real dt, int icsp)
         }
     }
 
-    if(!products.empty()){
+    // if(!products.empty()){
 
-        std::vector<int>& prodid =  reaction->productid_arr;
-        int nprods = static_cast<int>(products.size());
-        int nid = static_cast<int>(prodid.size());
-        for(int iprod = 0; iprod < nprods; ++iprod) {
-            for(int i = 0; i < nid; ++i){
-                int ispec = prodid[i];
-                species_arr[ispec]->particles->append(products[iprod][i]);
-            }
-        }
-    }
+    //     std::vector<int>& prodid =  reaction->prodid_arr;
+    //     int nprods = static_cast<int>(products.size());
+    //     int nid = static_cast<int>(prodid.size());
+    //     for(int iprod = 0; iprod < nprods; ++iprod) {
+    //         for(int i = 0; i < nid; ++i){
+    //             int ispec = prodid[i];
+    //             species_arr[ispec]->particles->append(products[iprod][i]);
+    //         }
+    //     }
+    // }
     coll << " nparts: " << npart  << " nu_max: " << nu_max 
          << " ncolls: " << ncoll << " -> "
          << ela << " " << exc << " " << ion << std::endl;
@@ -172,44 +172,6 @@ void Tile::ParticleColumnCollision(Real dt, int icsp)
     espic_error("Column collision has not prepared");
 }
 
-// void Tile::NullCollisionMethod(Particles& pts, Real dt, Real nu_max, 
-//                          Reaction*& react, Real imass, CollProd& products)
-// {
-//     Particles::size_type ncoll, ipart, npart;
-//     pts.particles_shuffle();
-//     std::ofstream of("part.out", std::ofstream::app);
-    
-//     npart = pts.size();
-//     ncoll = static_cast<Particles::size_type>(npart*Pcoll(nu_max,dt));
-//     std::cout << nu_max << " " << ncoll << " ";
-//     int ntype(react->isize());
-//     for(ipart = 0; ipart < ncoll; ++ipart) {
-//         Particle& ptc = pts[ipart];
-//         const std::vector<Real>& nu = ptc.nu();
-
-//         // of << "v = (" << ptc.vx() << " "<< ptc.vy() << " " << ptc.vz() << " ), " 
-//         //    << "vr = (" << ptc.vxr() << " "<< ptc.vyr() << " " << ptc.vzr() << " ), "
-//         //    << "nu = (";
-//         // for (const Real& iu : nu)
-//         //     of << iu << " ";
-//         // of <<")." << std::endl;
-        
-//         Real rnd(ranf()), nuj(0.);
-//         int itype = 0;
-//         while(itype != ntype) {
-//             nuj += nu[itype];
-//             if(rnd < nuj / nu_max) {
-//                 Collisionpair collision = Collisionpair(ptc, imass, mass, vth);
-//                 ParticleCollision(itype, mass, react, collision, products);
-//                 if(itype==0) ++ela;
-//                 else if(itype==1) ++exc;
-//                 else ++ion;
-//                 break;
-//             }
-//             ++itype;
-//         }
-//     }
-// }
 
 void Tile::ParticleCollision(
     const int type_id, 
@@ -258,24 +220,28 @@ void Tile::InitAmbient(
     }
 }
 
-
 void Tile::InitCollision(
         const ParamParticle* pp,
         const CrossSection* cs)
 {
     for (int icsp = 0; icsp < cs->num_pairs(); ++icsp) {
         Reaction* reaction = cs->reaction_arr[icsp];
+        const std::string& bspname = cs->get_bkname();
         const ReactPair& spair = reaction->pair();
-        const StringList& prod_list = cs->product_arr[icsp];
+        // const StringList& prod_list = cs->product_arr[icsp];
         std::vector<int> spec_id, prod_id;
         int specid1 = -1, specid2 = -1;
+        Real m1, m2;
         try {
             specid1 = pp->map_spec_name_indx.at(spair.first);
-            spec_id.emplace_back(specid1);
-            if (spair.second != "default"){
+            spec_id.push_back(specid1);
+            m1 = pp->specdef_arr[specid1]->mass;
+            if (spair.second != bspname){
                 specid2 = pp->map_spec_name_indx.at(spair.second);
-                spec_id.emplace_back(specid2);
-            }
+                spec_id.push_back(specid2);
+                m2 = pp->specdef_arr[specid2]->mass; 
+            } else { m2 = mass; }
+            reaction->mr() = m1*m2 / (m1+m2);
         }
         catch (const std::out_of_range& oor) {
             std::ostringstream oss;
@@ -283,28 +249,37 @@ void Tile::InitCollision(
                 << "\" given to \"cross_section\" command in [csection.in]";
             espic_error(oss.str());
         }
+        reaction->find_max_coll_freq();
         reaction_arr.emplace_back(std::make_pair(spec_id, reaction));
-        std::cout << "Reaction " << icsp << " product(name,specid): [ ";
-        
-        for (const auto& pro: prod_list) {
-            if ("none" == pro) {
-                std::cout << "none ";
-                break;
+        std::cout << "Reaction " << icsp  <<", relative mass: " << reaction->mr()
+                  << ", Max Coll Freq: " << reaction->max_coll_freq()
+                  << " product(name,specid): [";
+        int rnum = reaction->isize();
+        reaction->prodid_arr.resize(rnum);
+        for (int irct = 0; irct < rnum; ++irct) {
+            const StringList& tempprod = reaction->get_prod(irct);
+            std::cout << " ";
+            if (tempprod.empty()) {
+                std::cout << "none";
+                continue;
             }
-            int spid = -1;
-            try {
-                spid = pp->map_spec_name_indx.at(pro);
+            for (const std::string& pro : tempprod) {
+                int spid = -1;
+                try {
+                    spid = pp->map_spec_name_indx.at(pro);
+                }
+                catch (const std::out_of_range& oor) {
+                    std::ostringstream oss;
+                    oss << "Unknown species \"" << pro << " " << spair.second
+                        << "\" given to \"cross_section\" command in [csection.in]";
+                    espic_error(oss.str());
+                }
+                reaction->prodid_arr[irct].emplace_back(spid);
+                std::cout << pro << "(" << spid << ")" ;
             }
-            catch (const std::out_of_range& oor) {
-                std::ostringstream oss;
-                oss << "Unknown species \"" << pro << " " << spair.second
-                    << "\" given to \"cross_section\" command in [csection.in]";
-                espic_error(oss.str());
-            }
-            reaction->productid_arr.emplace_back(spid);
-            std::cout << pro << "(" << spid << ")" << " ";
+            
         }  
-        std::cout << "]" << std::endl;
+        std::cout << " ]" << std::endl;
     }
     
 }

@@ -14,8 +14,7 @@ typedef std::pair<std::string,std::string> ReactPair;
 class Reaction
 {
 public:
-    Reaction (std::string file, int type_number, StringList type,
-             const ReactPair& spair, int id);
+    Reaction (std::string file, const ReactPair& spair, int id);
     ~Reaction ();
 
     std::vector<Real> en_cs(Real en)
@@ -49,8 +48,9 @@ public:
         }
         return info;
     }
+    void find_max_coll_freq();
 
-    std::vector<int> productid_arr;
+    std::vector<std::vector<int> > prodid_arr;
     bool is_background_collision;
 
     const int size() const { return arr_length; }
@@ -63,21 +63,31 @@ public:
     const StringList& get_types() { return types; }
     
     const std::string get_file() const { return infile; }
+    const StringList& get_prod(int i) const { return product_arr[i]; }
+
+    const int sub_cycle() { return n_sub; } 
+    Real& mr() { return mr_; }
+    const Real& mr() const { return mr_; }
+    Real& max_coll_freq() { return nu_max; }
+    const Real& max_coll_freq() const { return nu_max; }
     
 private:
     std::string infile;
-    const int info_size;
+    int info_size;
     const ReactPair spec_pair;
     int reaction_id, arr_length;
-    Real de_;
+    Real de_, deinv_;
     std::vector<Real> threshold;
     std::vector<Real> info;
     std::vector<std::vector<Real>> info_arr; // info_arr of every energy
     std::vector<Real> energy;                // energy_arr of total energy bin
     StringList types;
-    // StringList reactant_arr;
-    // StringList product_arr;
+    std::vector<StringList> product_arr;
+    int n_sub;
+    Real mr_;
+    Real nu_max;
 
+    void element_resize();
     void resize_threshold();
 
 };

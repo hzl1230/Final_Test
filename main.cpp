@@ -23,14 +23,14 @@ int main(int argc, char** argv)
     of1.close(); of2.close(); 
     // of3.close(); of4.close(); of5.close();
 
-    cout << "MCC loop Start---------------------------------------------------------\n"; 
-    while(Loop) {
-        tile->ParticleCollisioninTiles(dt);
-        curr_time += dt;
-        if(curr_time >= ntime) 
-            Loop = false;
-    }
-    cout << "MCC loop ends----------------------------------------------------------\n";
+    // cout << "MCC loop Start---------------------------------------------------------\n"; 
+    // while(Loop) {
+    //     tile->ParticleCollisioninTiles(dt);
+    //     curr_time += dt;
+    //     if(curr_time >= ntime) 
+    //         Loop = false;
+    // }
+    // cout << "MCC loop ends----------------------------------------------------------\n";
     delete mesh;
     delete cross_section;
     delete param_particle;

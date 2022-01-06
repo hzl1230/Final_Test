@@ -3,17 +3,14 @@
 using std::cout;
 using std::endl;
 
-Reaction::Reaction (std::string file, int type_number, StringList type,
-            const ReactPair& spair, int id) 
+Reaction::Reaction (std::string file, const ReactPair& spair, int id) 
 : infile(file),
-info_size(type_number),
 spec_pair(spair),
 reaction_id(id),
-arr_length(3),
-threshold(0),
-types(type)
+threshold(0), 
+mr_(0), nu_max(0)
 {
-    info.reserve(info_size);
+    // info.reserve(info_size);
     FILE* fp = fopen(file.c_str(), "r");
     std::vector<std::string> line;
     if (NULL == fp) {
@@ -24,18 +21,32 @@ types(type)
     while(ParseLine(line, fp)){
         if(!info.empty()) info.clear();
         if (line.empty()) continue; 
-        else if("bin"==line.at(0)) {
-            arr_length = atoi(line[1].c_str()); 
-            info_arr.reserve(arr_length);
-            energy.reserve(arr_length);
-            if ("de" == line.at(2))
-                de_ = (Real)atof(line[3].c_str());
+        else if("basic"==line.at(0)) {
+            if (line.size() > 4) {
+                info_size = atoi(line[1].c_str());
+                arr_length = atoi(line[2].c_str()); 
+                de_ = static_cast<Real>(atof(line[3].c_str()));
+                deinv_ = 1/de_;
+                n_sub = atoi(line[4].c_str());
+                element_resize();
+            } else {
+                std::ostringstream oss;
+                oss << "Command basic in file [" << infile << "] need more parameters" ;
+                espic_error(oss.str());
+            }
         }
-        else if("threshold"==line.at(0)){
-            transform(line.begin()+1, line.end(), back_inserter(threshold), toReal);
-            resize_threshold();
+        else if("reaction"==line.at(0)) {
+            int id = atoi(line[1].c_str());
+            if (id > info_size) espic_error("Too Many Reaction");
+            types[id-1] = line[2];
+            threshold[id-1] = static_cast<Real>(atof(line[3].c_str()));
+            line.erase(line.begin(),line.begin()+4);
+            if (!line.empty()) {
+                int rest = static_cast<int>(line.size());
+                for (int i = 0; i < rest; ++i) 
+                    product_arr[id-1].emplace_back(line[i]);
+            }
         }
-        
         else{
             energy.emplace_back((Real)atof(line[0].c_str()));
             transform(line.begin()+1, line.begin()+info_size+1, back_inserter(info), toReal);
@@ -43,22 +54,53 @@ types(type)
         }
     }
     cout << "Initial Particle Reaction " << reaction_id << ": " << endl;
-    cout << "Reactant: [" << spec_pair.first << "," << spec_pair.second << "], "
-            << "Threshold: [" ;
+    cout << "Reactant: [" << spec_pair.first << "," << spec_pair.second << "],\n"
+            << " Threshold: [ " ;
     for (const auto& th: threshold) 
         cout << th << " ";
     cout << "]. " ;
     cout << "de: " << de_ << ", " << "Cross Section Number: " 
-            << info_size << ", Reaction Type: [";
+            << info_size << ".\n Reaction Type: [";
     for (const auto& type: types)
         cout << " " << type ;
-    cout << "]" << endl;
+    cout << " ]" << endl;
+    cout << "Process collision in every " << n_sub << " steps." << endl;
 
     is_background_collision = true;
 }    
 
 Reaction::~Reaction()
 { }
+
+/* ------------------------------------------------------------------------- */
+
+void Reaction::find_max_coll_freq()
+{
+    if (mr_ == 0)
+        espic_error("Relative Mass not defined");
+    Real e, v, nutot;
+    for(int i = 0; i < arr_length; ++i) {
+        e = i * de_;
+        v = sqrt(2.*e/mr_);
+
+        nutot = std::accumulate(info_arr[i].begin(), info_arr[i].end(), 0.);
+        nutot *= v; 
+        if (nutot > nu_max) { nu_max = nutot; }
+    }
+}
+
+/* ------------------------------------------------------------------------- */
+
+void Reaction::element_resize()
+{
+    // info_arr.resize(arr_length);
+    energy.resize(arr_length);
+    types.resize(info_size);
+    threshold.resize(info_size);
+    product_arr.resize(info_size);
+}
+
+/* ------------------------------------------------------------------------- */
 
 void Reaction::resize_threshold() 
 { 
