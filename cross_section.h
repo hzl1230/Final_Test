@@ -7,7 +7,7 @@ class CrossSection
 {
     friend class Reaction;
 public:
-    CrossSection(const std::string &file="csection.in");
+    CrossSection(const std::string file="csection.in");
     ~CrossSection();
 
     class Background {
