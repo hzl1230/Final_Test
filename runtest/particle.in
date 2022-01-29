@@ -1,0 +1,6 @@
+species e    1       -1.0  1e-6          !spec: name, mass, charge, weight
+species Ar+  72820.7  1.0  1e-6          !spec: name, mass, charge, weight
+ambient e 1.0 1.0 (0., 0., 0.)&         !ambient: name, n, T, (vx, vy, vz)
+        domain entire                   !domain xlo ylo zlo xhi yhi zhi or entire
+ambient Ar+ 1.0 0.01 (0., 0., 0.)&
+        domain entire

@@ -1,0 +1,14 @@
+domain    0 10 0 2 0 1 
+num_cells 10 2 1
+tile      4 1 1 
+field_bc type  d d p p p p & 
+         value 0 0 0 0 0 0
+part_bc  type v v r v p p 
+conductor rectangle type real &
+ position -2 1e-8 0. 1. 0. 0. &
+ potential fixed 100. &
+ is_rf  true
+conductor rectangle type real &
+ position 9.9999 10.2 0. 2. 0. 0. &
+ potential fixed 1. &
+ is_rf false
