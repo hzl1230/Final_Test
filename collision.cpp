@@ -1,34 +1,42 @@
 #include "collision.h"
+#include "espic_type.h"
 #include <fstream>
 
 // In class all velocity except for the Update part are relative velocity 
-Collisionpair::Collisionpair(Particle& particle, VrArr& vr, Real vel, Real m1, Real m2, Real vtb)
-: pt(particle), 
-mr(m1*m2/(m1+m2)), vth(vtb),
-gx(vr[0]), gy(vr[1]), gz(vr[2]),
-g(vel), energy(0.5*vel*vel*mr),
-F1(m1/(m1+m2)), F2(m2/(m1+m2))
-{
-    gyz = sqrt(gy*gy + gz*gz);
-    g1 = g;
-
-    Real vxb, vyb, vzb;
-    vxb = pt.vx() - gx;
-    vyb = pt.vy() - gy;
-    vzb = pt.vz() - gz;
-
-    wx = F1 * pt.vx() + F2 * vxb;
-    wy = F1 * pt.vy() + F2 * vyb;
-    wz = F1 * pt.vz() + F2 * vzb;
-}
+Collisionpair::Collisionpair(Real m1, Real m2, Real vtb)
+: mr(m1*m2/(m1+m2)), 
+vth(vtb),
+F1(m1/(m1+m2)), 
+F2(m2/(m1+m2))
+{ }
 
 Collisionpair::~Collisionpair()
 { }
 
-void Collisionpair::ParticleElasticCollision() 
+void Collisionpair::gen_collision_info(const Particle& particle, const Real* vr, const Real vel, 
+                                       const Real en, const bool e_col_flag)
+{
+    energy = en; g = vel;
+    gx = vr[0]; gy = vr[1]; gz = vr[2];
+    if (!e_col_flag) {
+        Real vxb, vyb, vzb;
+        vxb = particle.vx() - gx;
+        vyb = particle.vy() - gy;
+        vzb = particle.vz() - gz;
+        wx = F1 * particle.vx() + F2 * vxb;
+        wy = F1 * particle.vy() + F2 * vyb;
+        wz = F1 * particle.vz() + F2 * vzb;
+    } else {
+        wx = F1 * vr[0];
+        wy = F1 * vr[1];
+        wz = F1 * vr[2];
+    }
+}
+
+void Collisionpair::ElasticScatter(Particle& particle) 
 { 
-    chi = acos(1.0 - 2.0*RG01());
-    eta = ESPIC::PI2 * RG01();
+    chi = acos(1.0 - 2.0*ranf());
+    eta = ESPIC::PI2 * ranf();
     Real sc(sin(chi)), cc(cos(chi));
     Real se(sin(eta)), ce(cos(eta));
     cp = gy / gyz;
@@ -38,87 +46,138 @@ void Collisionpair::ParticleElasticCollision()
     vx = gx * cc - gyz * sc * ce;
     vy = gy * cc + gx * cp * sc * ce - g * sp * sc * se;
     vz = gz * cc + gx * sp * sc * ce + g * cp * sc * se;
-    pt.vx() = wx + F2 * vx;
-    pt.vy() = wy + F2 * vy;
-    pt.vz() = wz + F2 * vz;
-
+    particle.vx() = wx + F2 * vx;
+    particle.vy() = wy + F2 * vy;
+    particle.vz() = wz + F2 * vz;
 }
 
-void Collisionpair::ParticleExcitatinCollision(Real th) 
+void Collisionpair::ExcitatinCollision(const Real th, Particle& particle) 
 {
-    // std::ofstream of("exc.dat", std::ofstream::app);
-    // of << "th: " << th;
-    // of << " before: " << pt.velsqr()*mr;
     FindEulerAngle();
     energy = fabs(energy - th);
-    g1 = sqrt(2.0 * energy / mr);
-    chi = acos(1.0 - 2.0 * RG01());
-    eta = ESPIC::PI2 * RG01();
-    UpdateParticleVelInfo();
-
-    // of << " after: " << pt.velsqr()*mr << std::endl;
-    // of << std::endl;
-    // of.close();
+    g = sqrt(2.0 * energy / mr);
+    chi = acos(1.0 - 2.0 * ranf());
+    eta = ESPIC::PI2 * ranf();
+    UpdateParticleVelInfo(particle);
 }
 
-void Collisionpair::ParticleIonizationCollision(Real th)
+
+void Collisionpair::IonizationCollision(const Real th, 
+                                        Particle& particle,
+                                        const std::vector<int>& prodid, 
+                                        std::vector<Species*>& sp_arr)
 {
     Real en_ej, en_sc;
     Real g_ej, chi_ej, eta_ej;
     Real w = 10.3 / kTe0;
-
-    // std::ofstream of("ion.dat", std::ofstream::app);
-
-    energy = fabs(energy - th);
-    en_ej = w * tan(RG01() * atan(0.5*energy/w));
+    energy = energy - th;
+    en_ej = w * tan(ranf() * atan(0.5*energy/w));
     en_sc = fabs(energy - en_ej);
-    g1 = sqrt(2.0 * en_sc/mr);
+    g = sqrt(2.0 * en_sc/mr);
     g_ej = sqrt(2.0 * en_ej/mr);
     chi = acos(sqrt(en_sc / energy));
     chi_ej = acos(sqrt(en_ej / energy));
-    eta = ESPIC::PI2 * RG01();
+    eta = ESPIC::PI2 * ranf();
     eta_ej = eta + ESPIC::PI;
-
-    Particle e_ej = Particle(pt.x(), pt.y(), pt.z());
-    Particle p_ej = Particle(pt.x(), pt.y(), pt.z());
-
     FindEulerAngle();
-    UpdateParticleVelInfo();
+    UpdateParticleVelInfo(particle);
 
-    // of << " after: " << pt.velsqr()*mr << std::endl;
-
-    EjectElectronReaction(chi_ej, eta_ej, g_ej, e_ej);
-    product_arr.push_back(std::move(e_ej));
-    EjectIonReaction(p_ej);
-    product_arr.push_back(std::move(p_ej));
-
-    // of << "Eng sc: " << en_sc << " "
-    //    << "Eng ej: " << en_ej << std::endl;
-    // of << "F1: " << F1 << " "
-    //    << "F2: " << F2 << std::endl;
-    // of << "sc: " << pt.velsqr()*mr << " "
-    //    << "ej: " << e_ej.velsqr()*mr;  
-    // of << std::endl;
-    // of.close();
+    Real vx, vy, vz;
+    Real x(particle.x()), y(particle.y()), z(particle.z());
+    for(const int spid: prodid) {
+        if("e" == sp_arr[spid]->name)
+            EjectElectronReaction(chi_ej, eta_ej, g_ej, vx, vy, vz);
+        else { VelBoltzDistr(vth, vx, vy, vz); }
+    
+        sp_arr[spid]->particles->append(Particle(x, y, z, vx, vy, vz));
+    }
 }
 
-void Collisionpair::ParticleIsotropicCollision()
+void Collisionpair::DetachmentCollision(const Real th, 
+                               Particle& particle,
+                               const std::vector<int>& prodid,
+                               std::vector<Species*>& sp_arr)
 {
-    chi = acos(1.0 - 2.0*RG01());
-    eta = PI2 * RG01();
-    FindEulerAngle();
-    UpdateParticleVelInfo();
+    energy -= th;
+    Real en_ej(th), g_ej, chi_ej, eta_ej;
+    g_ej = sqrt(2.0 * en_ej/mr);
+    chi_ej = acos(sqrt(en_ej / energy));
+    eta_ej = ESPIC::PI2 + ESPIC::PI;
+    
+    Real vx, vy, vz;
+    Real x(particle.x()), y(particle.y()), z(particle.z());
+    for(const int spid: prodid) {
+        if("e" == sp_arr[spid]->name)
+            EjectElectronReaction(chi_ej, eta_ej, g_ej, vx, vy, vz);
+        else { VelBoltzDistr(vth, vx, vy, vz); }
+    
+        sp_arr[spid]->particles->append(Particle(x, y, z, vx, vy, vz));
+    }
 }
 
-void Collisionpair::ParticleBackwardCollision()
+void Collisionpair::IsotropicCollision(Particle& particle)
+{
+    chi = acos(1.0 - 2.0*ranf());
+    eta = PI2 * ranf();
+    FindEulerAngle();
+    UpdateParticleVelInfo(particle);
+}
+
+void Collisionpair::BackwardCollision(Particle& particle)
 {
     chi = PI;
-    eta = PI2 * RG01();
+    eta = PI2 * ranf();
     FindEulerAngle();
-    UpdateParticleVelInfo();
+    UpdateParticleVelInfo(particle);
 }
 
+void Collisionpair::ChargeExchange(Particle& particle)
+{
+    particle.vx() = 0.0;
+    particle.vy() = 0.0;
+    particle.vz() = 0.0;
+}
 
+void Collisionpair::CoulombScatter(Particle& ip, Particle& tp)
+{
+}
+
+void Collisionpair::DissociationAttechment(const Real th, 
+                                           Particle& particle,
+                                           const std::vector<int>& prodid, 
+                                           std::vector<Species*>& sp_arr)
+{ 
+}
+
+void Collisionpair::ElectronImpactDetechment(const Real th, Particle& ip,
+                                             const std::vector<int>& prodid, 
+                                             std::vector<Species*>& sp_arr)
+{
+    Real en_ej, en_sc;
+    Real g_ej, chi_ej, eta_ej;
+    Real w = 10.3 / kTe0;
+    energy = energy - th;
+    en_ej = w * tan(ranf() * atan(0.5*energy/w));
+    en_sc = fabs(energy - en_ej);
+    g = sqrt(2.0 * en_sc/mr);
+    g_ej = sqrt(2.0 * en_ej/mr);
+    chi = acos(sqrt(en_sc / energy));
+    chi_ej = acos(sqrt(en_ej / energy));
+    eta = ESPIC::PI2 * ranf();
+    eta_ej = eta + ESPIC::PI;
+    FindEulerAngle();
+    UpdateParticleVelInfo(ip);
+
+    Real vx, vy, vz;
+    Real x(ip.x()), y(ip.y()), z(ip.z());
+    for(const int spid: prodid) {
+        if("e" == sp_arr[spid]->name)
+            EjectElectronReaction(chi_ej, eta_ej, g_ej, vx, vy, vz);
+        else { VelBoltzDistr(vth, vx, vy, vz); }
+    
+        sp_arr[spid]->particles->append(Particle(x, y, z, vx, vy, vz));
+    }
+}
 
 void Collisionpair::FindEulerAngle()
 {
@@ -133,11 +192,11 @@ void Collisionpair::FindEulerAngle()
         sp = gz / gyz;
         cp = gy / gyz;
     }
-        
 }
 
 
-void Collisionpair::EjectElectronReaction(Real chi_, Real eta_, Real vel_, Particle& particle)
+void Collisionpair::EjectElectronReaction(Real chi_, Real eta_, Real vel_, 
+                                          Real& vx, Real& vy, Real& vz)
 {
     Real sc(sin(chi_)), cc(cos(chi_));
     Real se(sin(eta_)), ce(cos(eta_));
@@ -145,28 +204,19 @@ void Collisionpair::EjectElectronReaction(Real chi_, Real eta_, Real vel_, Parti
     gx = vel_ * (ct * cc - st * sc * ce);
     gy = vel_ * (stcp * cc + ct * cp * sc * ce - sp * sc * se);
     gz = vel_ * (stsp * cc + ct * sp * sc * ce + cp * sc * se);
-    particle.vx() = wx + F2*gx;
-    particle.vy() = wy + F2*gy;
-    particle.vz() = wz + F2*gz;
+    vx = wx + F2*gx;
+    vy = wy + F2*gy;
+    vz = wz + F2*gz;
 }
 
-void Collisionpair::UpdateParticleVelInfo()
+void Collisionpair::UpdateParticleVelInfo(Particle& particle)
 {
     Real sc(sin(chi)), cc(cos(chi));
     Real se(sin(eta)), ce(cos(eta));
-    gx = g1 * (ct * cc - st * sc * ce);
-    gy = g1 * (stcp * cc + ct * cp * sc * ce - sp * sc * se);
-    gz = g1 * (stsp * cc + ct * sp * sc * ce + cp * sc * se);
-    pt.vx() = wx + F2 * gx;
-    pt.vy() = wy + F2 * gy;
-    pt.vz() = wz + F2 * gz;
-}
-
-void Collisionpair::EjectIonReaction(Particle& particle)
-{
-    Real vx, vy, vz;
-    VelBoltzDistr(vth, vx, vy, vz);
-    particle.vx() = vx; 
-    particle.vy() = vy; 
-    particle.vz() = vz;
+    gx = g * (ct * cc - st * sc * ce);
+    gy = g * (stcp * cc + ct * cp * sc * ce - sp * sc * se);
+    gz = g * (stsp * cc + ct * sp * sc * ce + cp * sc * se);
+    particle.vx() = wx + F2 * gx;
+    particle.vy() = wy + F2 * gy;
+    particle.vz() = wz + F2 * gz;
 }

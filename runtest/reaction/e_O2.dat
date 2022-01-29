@@ -1,0 +1,18 @@
+basic 15 2 0.00386817 10   ! reaction_number  cs_number  cs_de sub_cycles
+reaction 1 ela 0.0
+reaction 2 rot 0.02
+reaction 3 vib 0.19
+reaction 4 vib 0.38
+reaction 5 vib 0.57 
+reaction 6 vib 0.75
+reaction 7 exc 0.977
+reaction 8 exc 1.63
+reaction 9 dis 4.2 O-   ! dis remove particle e
+reaction 10 exc 4.5
+reaction 11 exc 6.0
+reaction 12 exc 8.4
+reaction 13 exc 9.97
+reaction 14 ion 12.06 e O2+  ! ion generate new e and ion
+reaction 15 exc 14.7
+0.00386817 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
+0.00773634 2 4 6 8 10 12 14 16 18 20 22 24 26 28 30

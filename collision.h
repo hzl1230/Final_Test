@@ -1,60 +1,83 @@
 #ifndef _COLL_
 #define _COLL_
 #
-#include "cross_section.h"
 #include "particles.h"
 #include "espic_type.h"
 #include "espic_math.h"
+#include "species.h"
 
 typedef std::vector<std::vector<Particle>> CollProd;
-typedef std::vector<std::vector<Real>> VecRealArr;
-typedef std::array<Real, 3> VrArr;
 extern Real kTe0;
 using namespace ESPIC;
 
 class Collisionpair {
-friend class Particle;
 public:    // In class all velocity except for the Update part are relative velocity 
-    Collisionpair(Particle& particle, VrArr& vr, Real vel, Real m1, Real m2, Real vtb);
+    Collisionpair(Real m1, Real m2, Real vtb);
 
     ~Collisionpair();
 
-    void ParticleElasticCollision(); 
+    void gen_collision_info(const Particle& ip, const Real* vr, const Real vel, const Real energy, const bool e_col_flag);
 
-    void ParticleExcitatinCollision(Real th);
+    void ElasticScatter(Particle& particle); 
 
-    void ParticleIonizationCollision(Real th);
+    void ExcitatinCollision(const Real th, Particle& particle);
 
-    void ParticleIsotropicCollision();
+    void IonizationCollision(const Real th, Particle& particle,
+                             const std::vector<int>& prodid, 
+                             std::vector<Species*>& sp_arr);
 
-    void ParticleBackwardCollision();
+    void DissociationAttechment(const Real th, 
+                                Particle& particle,
+                                const std::vector<int>& prodid, 
+                                std::vector<Species*>& sp_arr);
+    
+    void DetachmentCollision(const Real th, 
+                    Particle& particle,
+                    const std::vector<int>& prodid,
+                    std::vector<Species*>& sp_arr);
 
-    std::vector<Particle>& ion_products() { return product_arr; }
+    void IsotropicCollision(Particle& particle);
+
+    void BackwardCollision(Particle& particle);
+
+    void ChargeExchange(Particle& particle);
+
+    void CoulombScatter(Particle& ip, Particle& tp);
+
+    void ParticleRecombination(Particle& ip, Particle& tp);
+
+    void ElectronImpactDetechment(const Real th, Particle& ip,
+                                  const std::vector<int>& prodid, 
+                                  std::vector<Species*>& sp_arr);
+
+    
+
+    // std::vector<Particle>& ion_products() { return product_arr; }
+    const Real vx() { return v_new[0]; }
+    const Real vy() { return v_new[1]; }
+    const Real vz() { return v_new[2]; }
 
 private:
     void FindEulerAngle();
 
-    void EjectElectronReaction(Real chi_, Real eta_, Real vel_, Particle& particle);
+    void EjectElectronReaction(Real chi_, Real eta_, Real vel_, 
+                               Real& vx, Real& vy, Real& vz);
 
-    void UpdateParticleVelInfo();
+    void UpdateParticleVelInfo(Particle& particle);
 
-    void EjectIonReaction(Particle& particle);
+    // void EjectIonReaction(Real& vx, Real& vy, Real& vz);
 
-
-    Particle& pt;
     const Real mr;
     const Real vth;
-    Real gx, gy, gz, gyz, g1;    // relative-velocity
-    const Real g;
-    Real energy;
     const Real F1, F2;
-    
+    // Particle& particle;
+    Real gx, gy, gz, gyz;    // relative-velocity
+    Real g;
+    Real energy;
+
     Real chi, eta;
     Real wx, wy, wz;
     Real st, ct, cp, sp, stcp, stsp;
-    std::vector<Particle> product_arr;
-    
-    // std::vector<Real> velbuffer;
-
+    Real v_new[3];
 };
 #endif

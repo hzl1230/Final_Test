@@ -3,14 +3,16 @@
 using std::cout;
 using std::endl;
 
-Reaction::Reaction (std::string file, const ReactPair& spair, int id) 
+Reaction::Reaction (std::string file, const ReactPair& spair, const Real vtb, int id) 
 : infile(file),
 spec_pair(spair),
 reaction_id(id),
-threshold(0), 
-mr_(0), nu_max(0)
+threshold(0),
+vth(vtb), mr_(0), 
+nu_max(0), 
+is_e_in(false),
+collision(nullptr)
 {
-    // info.reserve(info_size);
     FILE* fp = fopen(file.c_str(), "r");
     std::vector<std::string> line;
     if (NULL == fp) {
@@ -66,30 +68,133 @@ mr_(0), nu_max(0)
     cout << " ]" << endl;
     cout << "Process collision in every " << n_sub << " steps." << endl;
 
+    if ("e" == spair.first) is_e_in = true;
     is_background_collision = true;
 }    
 
-Reaction::~Reaction()
-{ }
-
 /* ------------------------------------------------------------------------- */
 
-void Reaction::find_max_coll_freq()
-{
-    if (mr_ == 0)
-        espic_error("Relative Mass not defined");
-    Real e, v, nutot;
-    for(int i = 0; i < arr_length; ++i) {
-        e = i * de_;
-        v = sqrt(2.*e/mr_);
-
-        nutot = std::accumulate(info_arr[i].begin(), info_arr[i].end(), 0.);
-        nutot *= v; 
-        if (nutot > nu_max) { nu_max = nutot; }
+Reaction::~Reaction()
+{ 
+    if (nullptr != collision) {
+        delete collision;
+        collision = nullptr;
     }
 }
 
 /* ------------------------------------------------------------------------- */
+
+void Reaction::init_collision(const Real m1, const Real m2, const Real n)
+{
+    collision = new Collisionpair(m1, m2, vth);
+    find_max_coll_freq(n);
+}
+
+/* -------------------------------------------------------------------------*/
+
+void Reaction::mcc_background_collision(const int ipart,
+                                        Particle& particle, 
+                                        std::vector<Species*>& species_arr,
+                                        std::vector<int>& pdep,
+                                        bool e_incident)
+{
+    std::vector<Real> nu(info_size);
+    Real* v = particle.vel();
+    Real vel_R;
+    if (!is_e_in) {
+        Real vxb, vyb, vzb;
+        VelBoltzDistr(vth, vxb, vyb, vzb);
+        v[0] -= vxb; v[1] -= vyb; v[2] -= vzb;
+    }
+    vel_R = velocity(v[0], v[1], v[2]);
+    const Real energy = 0.5 * vel_R*vel_R * mr_;
+    CrossSectionInterplot(energy, nu);
+    Real rnd = ranf(), nuj = 0.;
+    for (int itype = 0; itype < info_size; itype++) {
+        nuj += nu[itype];
+        if(rnd < (nuj/nu_max)) {
+            std::string type = types[itype];
+            const Real th = threshold[itype];
+            collision->gen_collision_info(particle, v, vel_R, energy, e_incident);
+            if ("ela" == type)
+                collision->ElasticScatter(particle);
+            else if ("exc" == type || "vib" == type || "rot" == type)
+                collision->ExcitatinCollision(th, particle);
+            else if ("ion" == type) 
+                collision->IonizationCollision(th, particle, prodid_arr[itype], species_arr);
+            else if ("disa" == type) { 
+                // Generate new particles and remove incident particle 
+                collision->IonizationCollision(th, particle, prodid_arr[itype], species_arr);
+                pdep.push_back(ipart);
+                pdep.push_back(9);
+            }
+            else if ("det" == type) {
+                collision->DetachmentCollision(th, particle, prodid_arr[itype], species_arr);
+                pdep.push_back(ipart);
+                pdep.push_back(9);
+            }
+            else if ("iso" == type) 
+                collision->IsotropicCollision(particle);
+            else if ("back" == type)
+                collision->BackwardCollision(particle);
+            else if ("cex" == type)
+                collision->ChargeExchange(particle);
+            else
+                espic_error("Unknown Collision Type in Process P-B Collision");
+    
+            break;
+        }
+    }
+
+}
+void Reaction::mcc_particle_collision(const int ipart, 
+                                      const int tpart,
+                                      Particle& ipt, 
+                                      Particle& tpt,
+                                      std::vector<Species*>& species_arr, 
+                                      std::vector<int>& ipdep,
+                                      std::vector<int>& tpdep)
+{
+    std::vector<Real> nu(info_size);
+    Real v[3] = {ipt.vx()-tpt.vx(), ipt.vy()-tpt.vy(), ipt.vz()-tpt.vz()};
+    Real vel_R = velocity(v[0], v[1], v[2]);
+    const Real energy = 0.5 * vel_R*vel_R * mr_;
+    CrossSectionInterplot(energy, nu);
+    Real rnd = ranf(), nuj = 0.0;
+    for (int itype = 0; itype < info_size; itype++) {
+        nuj += nu[itype];
+        if(rnd < (nuj/nu_max)) {
+            std::string type = types[itype];
+            const Real th = threshold[itype];
+            collision->gen_collision_info(ipt, v, vel_R, energy, 0);
+            if ("ela" == type)
+                collision->CoulombScatter(ipt, tpt);
+            else if ("drc" == type || "mn" == type) {
+                ipdep.push_back(ipart); ipdep.push_back(9);
+                tpdep.push_back(tpart); tpdep.push_back(9);
+            }
+            else if ("eid" == type) {
+                collision->ElectronImpactDetechment(th, ipt, prodid_arr[itype], species_arr);
+                tpdep.push_back(tpart);
+                tpdep.push_back(9);
+            }
+            else
+                espic_error("Unknown Collision Type in Process P-P Collision");
+        }
+    }
+
+}
+
+/* ------------------------------------------------------------------------- */
+
+void Reaction::resize_threshold() 
+{ 
+    if(threshold.size() < static_cast<size_t>(info_size - 1)) {
+        std::size_t di = info_size - 1 - threshold.size();
+        while(di > 0) 
+            threshold.push_back(0);  
+    }
+}
 
 void Reaction::element_resize()
 {
@@ -100,13 +205,22 @@ void Reaction::element_resize()
     product_arr.resize(info_size);
 }
 
-/* ------------------------------------------------------------------------- */
-
-void Reaction::resize_threshold() 
-{ 
-    if(threshold.size() < static_cast<size_t>(info_size - 1)) {
-        std::size_t di = info_size - 1 - threshold.size();
-        while(di > 0) 
-            threshold.emplace_back(0);  
+void Reaction::find_max_coll_freq (const Real ndens)
+{
+    if (mr_ == 0)
+        espic_error("Relative Mass not defined");
+    Real e, v, nv;
+    for(int i = 0; i < arr_length; ++i) {
+        Real nutot = 0.;
+        e = i * de_;
+        v = sqrt(2.*e/mr_);
+        nv = ndens * v;
+        for (auto& ics :info_arr[i]){
+            ics *= nv; 
+            nutot += ics;
+        }
+        if (nutot > nu_max) { nu_max = nutot; }
     }
 }
+
+/* ------------------------------------------------------------------------- */

@@ -80,90 +80,28 @@ void Tile::ParticleCollisioninTiles(Real dt)
 
 void Tile::ParticleBackgroundCollision(Real dt, int icsp)
 {
-    Particles::size_type ipart, npart, ncoll;
-    
+    Particles::size_type npart, ncoll;
     const int spec_id = (reaction_arr[icsp].first)[0];
     Reaction* & reaction = reaction_arr[icsp].second;
-    Particles* & pts = species_arr[spec_id]->particles;
-    const Real pm = species_arr[spec_id]->mass;
-    const Real m = (pm * mass)/(pm + mass);
+    const Real nu_max = reaction->max_coll_freq();
+    bool e_incident = reaction->is_e_incident();
 
     const std::string& name = species_arr[spec_id]->name;
     std::ofstream of(name+".dat", std::ofstream::app);
-    std::ofstream coll("coll.dat", std::ofstream::app);
-    Real nu_max(0);
-    npart = pts->size();
 
-    VecRealArr nu_arr(npart);
-    std::vector<VrArr> vr_arr(npart);
-    std::vector<Real> vel_r(npart);
-    std::vector<int> index_list;
-    
-    for (ipart=0; ipart < npart; ++ipart) {
-        Real nevrt, nutot(0);
-        Real vxb, vyb, vzb;
-        Real energy;
-        Particle& pt = (*pts)[ipart];
+    Particles* & particles = species_arr[spec_id]->particles;
+    std::vector<int> pdep, index_list;
 
-        VelBoltzDistr(vth, vxb, vyb, vzb);
-        vr_arr[ipart] = {pt.vx()-vxb, pt.vy()-vyb, pt.vz()-vzb};
-        vel_r[ipart] = velocity(vr_arr[ipart][0], vr_arr[ipart][1], vr_arr[ipart][2]);
-        energy = 0.5 * vel_r[ipart]*vel_r[ipart] * m;
-        nu_arr[ipart] = reaction->en_cs(energy);
-
-        nevrt = vel_r[ipart] * ndens;
-        for (auto& nui : nu_arr[ipart]) {
-            nui *= nevrt;
-            nutot += nui;
-        }
-        if (nutot > nu_max) nu_max = nutot;
-    }
+    npart = particles->size();
     ncoll = static_cast<Particles::size_type>(npart*Pcoll(nu_max,dt)+0.5);
     random_index(npart, ncoll, index_list);
-    sort(index_list.begin(), index_list.end());
-
-    CollProd products;
-    int ntype = reaction->isize();
-    for(const int& ipart: index_list) {
-        Particle& ptc = (*pts)[ipart];
-        const std::vector<Real>& nu = nu_arr[ipart];
-        
-        Real rnd = ranf(), nuj = 0.;
-        int itype = 0;
-        while(itype != ntype) {
-            nuj += nu[itype];
-            if(rnd < (nuj/nu_max)) {
-                Collisionpair collision = Collisionpair(ptc, vr_arr[ipart], vel_r[ipart], pm, mass, vth);
-                ParticleCollision(itype, mass, reaction, collision, products);
-                // break;
-                if (itype == 0) ++ela;
-                else if (itype == 1) ++exc;
-                else ++ion;
-                break;
-            }
-            ++itype;
-        }
-    }
-
-    // if(!products.empty()){
-
-    //     std::vector<int>& prodid =  reaction->prodid_arr;
-    //     int nprods = static_cast<int>(products.size());
-    //     int nid = static_cast<int>(prodid.size());
-    //     for(int iprod = 0; iprod < nprods; ++iprod) {
-    //         for(int i = 0; i < nid; ++i){
-    //             int ispec = prodid[i];
-    //             species_arr[ispec]->particles->append(products[iprod][i]);
-    //         }
-    //     }
-    // }
-    coll << " nparts: " << npart  << " nu_max: " << nu_max 
-         << " ncolls: " << ncoll << " -> "
-         << ela << " " << exc << " " << ion << std::endl;
-
+    // sort(index_list.begin(), index_list.end());
+    for (const Particles::size_type ipart: index_list) {
+        reaction->mcc_background_collision(ipart, (*particles)[ipart], species_arr, pdep, e_incident);
+    } 
+    // RemoveHoles(pdep.size()/2, pdep, particles);
     species_arr[spec_id]->get_particles_energy();
     of << species_arr[spec_id]->toten << std::endl;
-    coll.close();
     of.close();
 }
 
@@ -172,36 +110,6 @@ void Tile::ParticleColumnCollision(Real dt, int icsp)
     espic_error("Column collision has not prepared");
 }
 
-
-void Tile::ParticleCollision(
-    const int type_id, 
-    Real mass,
-    Reaction*& reaction,
-    Collisionpair& cop,
-    CollProd& prod_arr)
-{
-    Real threshold;
-    std::string type = (reaction->get_types())[type_id];
-    bool is_bc = reaction->is_background_collision;
-    if (type_id == 0)  threshold = 0.0;
-    else  threshold = (reaction->th())[type_id-1];
-
-    if ("ela" == type)
-        cop.ParticleElasticCollision();
-    else if ("exc" == type)
-        cop.ParticleExcitatinCollision(threshold);
-    else if ("ion" == type) {
-        if (is_bc)
-          cop.ParticleIonizationCollision(threshold);
-        prod_arr.emplace_back(cop.ion_products()); 
-    }
-    else if ("iso" == type) 
-        cop.ParticleIsotropicCollision();
-    else if ("back" == type)
-        cop.ParticleBackwardCollision();
-    else
-        espic_error("Unknown Collision Type");
-}
 
 
 /*----------------------- begin private method ------------------------*/
@@ -226,22 +134,22 @@ void Tile::InitCollision(
 {
     for (int icsp = 0; icsp < cs->num_pairs(); ++icsp) {
         Reaction* reaction = cs->reaction_arr[icsp];
-        const std::string& bspname = cs->get_bkname();
         const ReactPair& spair = reaction->pair();
         // const StringList& prod_list = cs->product_arr[icsp];
         std::vector<int> spec_id, prod_id;
         int specid1 = -1, specid2 = -1;
-        Real m1, m2;
+        Real m1, m2, nref = ndens;
         try {
             specid1 = pp->map_spec_name_indx.at(spair.first);
             spec_id.push_back(specid1);
             m1 = pp->specdef_arr[specid1]->mass;
-            if (spair.second != bspname){
+            if (spair.second != "default"){
                 specid2 = pp->map_spec_name_indx.at(spair.second);
                 spec_id.push_back(specid2);
                 m2 = pp->specdef_arr[specid2]->mass; 
+                nref = 1.0;
             } else { m2 = mass; }
-            reaction->mr() = m1*m2 / (m1+m2);
+            reaction->mr() = (reaction->is_e_incident()) ? m1 : m1*m2 / (m1+m2);
         }
         catch (const std::out_of_range& oor) {
             std::ostringstream oss;
@@ -249,11 +157,15 @@ void Tile::InitCollision(
                 << "\" given to \"cross_section\" command in [csection.in]";
             espic_error(oss.str());
         }
-        reaction->find_max_coll_freq();
-        reaction_arr.emplace_back(std::make_pair(spec_id, reaction));
+         // pbc directly get max nu;
+         // ppc get max vsigma, n multiply in tile
+        reaction->init_collision(m1, m2, nref);
+        
+        reaction_arr.push_back(std::make_pair(spec_id, reaction));
         std::cout << "Reaction " << icsp  <<", relative mass: " << reaction->mr()
                   << ", Max Coll Freq: " << reaction->max_coll_freq()
                   << " product(name,specid): [";
+        
         int rnum = reaction->isize();
         reaction->prodid_arr.resize(rnum);
         for (int irct = 0; irct < rnum; ++irct) {

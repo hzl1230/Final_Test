@@ -7,7 +7,7 @@ class CrossSection
 {
     friend class Reaction;
 public:
-    CrossSection(const std::string file="csection.in");
+    CrossSection(const std::string &file="csection.in");
     ~CrossSection();
 
     class Background {
@@ -35,20 +35,20 @@ public:
     const std::vector<std::string>& files() { return reaction_file; }
     // const std::vector<int>& num_react() const { return reaction_type_number; }
     int num_pairs() const { return pairs_number; }
-    const std::string& get_bkname() const { return bspname; }
+    const std::string& background_name() const { return bspname; }
 
 private:
     const std::string infile;
-    std::string bspname;
     int pairs_number;
     std::vector<std::string> reaction_file;
+    std::string bspname;
     // std::vector<int> num_reactant;
     // std::vector<int> reaction_type_number;
     // StringList reaction_types;
     
     CrossSection();
 
-    void get_reaction();
+    void gen_reaction();
     void read_input_cross_section();
     void proc_background(vector<string>& word);
 
