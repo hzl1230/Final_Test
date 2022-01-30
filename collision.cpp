@@ -3,7 +3,7 @@
 #include <fstream>
 
 // In class all velocity except for the Update part are relative velocity 
-Collisionpair::Collisionpair(Real m1, Real m2, Real vtb)
+Collisionpair::Collisionpair(const Real m1, const Real m2, const Real mr, const Real vtb)
 : mr(m1*m2/(m1+m2)), 
 vth(vtb),
 F1(m1/(m1+m2)), 
@@ -18,6 +18,7 @@ void Collisionpair::gen_collision_info(const Particle& particle, const Real* vr,
 {
     energy = en; g = vel;
     gx = vr[0]; gy = vr[1]; gz = vr[2];
+    gyz = sqrt(gy*gy + gz*gz);
     if (!e_col_flag) {
         Real vxb, vyb, vzb;
         vxb = particle.vx() - gx;
@@ -90,7 +91,9 @@ void Collisionpair::IonizationCollision(const Real th,
         else { VelBoltzDistr(vth, vx, vy, vz); }
     
         sp_arr[spid]->particles->append(Particle(x, y, z, vx, vy, vz));
+        std::cout << vx << " " << vy << " " << vz << std::endl;
     }
+   
 }
 
 void Collisionpair::DetachmentCollision(const Real th, 

@@ -28,8 +28,7 @@ public:
     void mcc_background_collision(const int ipart,
                                   Particle& particle, 
                                   std::vector<Species*>& species_arr, 
-                                  std::vector<int>& pdep,
-                                  bool e_incident);
+                                  std::vector<int>& pdep);
 
     void mcc_particle_collision(const int ipart,
                                 const int tpart,
@@ -58,7 +57,7 @@ public:
     const Real& mr() const { return mr_; }
     Real max_coll_freq() { return nu_max; }
 
-    bool is_e_incident() { return is_e_in; }
+    bool is_e_incident() { return e_incident; }
 
 private:
     std::string infile;
@@ -77,7 +76,7 @@ private:
     Real mr_;
     Real nu_max;
     
-    bool is_e_in;
+    bool e_incident;
     Collisionpair* collision;
     void resize_threshold();
     void element_resize();   

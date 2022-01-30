@@ -12,7 +12,7 @@ using namespace ESPIC;
 
 class Collisionpair {
 public:    // In class all velocity except for the Update part are relative velocity 
-    Collisionpair(Real m1, Real m2, Real vtb);
+    Collisionpair(const Real m1, const Real m2, const Real mr, const Real vtb);
 
     ~Collisionpair();
 

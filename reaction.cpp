@@ -10,7 +10,7 @@ reaction_id(id),
 threshold(0),
 vth(vtb), mr_(0), 
 nu_max(0), 
-is_e_in(false),
+e_incident(false),
 collision(nullptr)
 {
     FILE* fp = fopen(file.c_str(), "r");
@@ -68,7 +68,7 @@ collision(nullptr)
     cout << " ]" << endl;
     cout << "Process collision in every " << n_sub << " steps." << endl;
 
-    if ("e" == spair.first) is_e_in = true;
+    if ("e" == spair.first) e_incident = true;
     is_background_collision = true;
 }    
 
@@ -86,7 +86,7 @@ Reaction::~Reaction()
 
 void Reaction::init_collision(const Real m1, const Real m2, const Real n)
 {
-    collision = new Collisionpair(m1, m2, vth);
+    collision = new Collisionpair(m1, m2, mr_, vth);
     find_max_coll_freq(n);
 }
 
@@ -95,13 +95,12 @@ void Reaction::init_collision(const Real m1, const Real m2, const Real n)
 void Reaction::mcc_background_collision(const int ipart,
                                         Particle& particle, 
                                         std::vector<Species*>& species_arr,
-                                        std::vector<int>& pdep,
-                                        bool e_incident)
+                                        std::vector<int>& pdep)
 {
     std::vector<Real> nu(info_size);
-    Real* v = particle.vel();
+    Real v[3] = {particle.vx(), particle.vy(), particle.vz()};
     Real vel_R;
-    if (!is_e_in) {
+    if (!e_incident) {
         Real vxb, vyb, vzb;
         VelBoltzDistr(vth, vxb, vyb, vzb);
         v[0] -= vxb; v[1] -= vyb; v[2] -= vzb;

@@ -18,6 +18,7 @@ CrossSection::CrossSection(const std::string &file)
     std::cout << "background - (name = " << background->name;
     std::cout << ", mass = " << background->mass;
     std::cout << ", n = " << background->ndens;
+    std::cout << ", vth = " << background->vth;
     std::cout << ", T = " << background->temp << ")." << std::endl;
 }
 

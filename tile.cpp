@@ -84,7 +84,7 @@ void Tile::ParticleBackgroundCollision(Real dt, int icsp)
     const int spec_id = (reaction_arr[icsp].first)[0];
     Reaction* & reaction = reaction_arr[icsp].second;
     const Real nu_max = reaction->max_coll_freq();
-    bool e_incident = reaction->is_e_incident();
+    // bool e_incident = reaction->is_e_incident();
 
     const std::string& name = species_arr[spec_id]->name;
     std::ofstream of(name+".dat", std::ofstream::app);
@@ -97,7 +97,7 @@ void Tile::ParticleBackgroundCollision(Real dt, int icsp)
     random_index(npart, ncoll, index_list);
     // sort(index_list.begin(), index_list.end());
     for (const Particles::size_type ipart: index_list) {
-        reaction->mcc_background_collision(ipart, (*particles)[ipart], species_arr, pdep, e_incident);
+        reaction->mcc_background_collision(ipart, (*particles)[ipart], species_arr, pdep);
     } 
     // RemoveHoles(pdep.size()/2, pdep, particles);
     species_arr[spec_id]->get_particles_energy();
@@ -150,6 +150,7 @@ void Tile::InitCollision(
                 nref = 1.0;
             } else { m2 = mass; }
             reaction->mr() = (reaction->is_e_incident()) ? m1 : m1*m2 / (m1+m2);
+            reaction->init_collision(m1, m2, nref);
         }
         catch (const std::out_of_range& oor) {
             std::ostringstream oss;
@@ -159,8 +160,7 @@ void Tile::InitCollision(
         }
          // pbc directly get max nu;
          // ppc get max vsigma, n multiply in tile
-        reaction->init_collision(m1, m2, nref);
-        
+    
         reaction_arr.push_back(std::make_pair(spec_id, reaction));
         std::cout << "Reaction " << icsp  <<", relative mass: " << reaction->mr()
                   << ", Max Coll Freq: " << reaction->max_coll_freq()
